@@ -27,32 +27,54 @@ export interface LivePreviewHtmlWidgetsOptions {
 
 const forceRefreshEffect = StateEffect.define<void>();
 
+interface LivePreviewDecorationState {
+  decorations: DecorationSet;
+  refreshVersion: number;
+}
+
 export function createLivePreviewHtmlWidgets(options: LivePreviewHtmlWidgetsOptions) {
-  return Prec.highest(StateField.define<DecorationSet>({
-    create: (state) => buildDecorations(state, options),
-    update: (decorations, transaction) => {
+  return Prec.highest(StateField.define<LivePreviewDecorationState>({
+    create: (state) => buildDecorationState(state, options, 0),
+    update: (value, transaction) => {
+      const refreshVersion = transaction.effects.some((effect) => effect.is(forceRefreshEffect))
+        ? value.refreshVersion + 1
+        : value.refreshVersion;
+
       if (
         transaction.docChanged
         || transaction.selection
-        || transaction.effects.some((effect) => effect.is(forceRefreshEffect))
+        || refreshVersion !== value.refreshVersion
       ) {
-        return buildDecorations(transaction.state, options);
+        return buildDecorationState(transaction.state, options, refreshVersion);
       }
 
-      return decorations.map(transaction.changes);
+      return {
+        decorations: value.decorations.map(transaction.changes),
+        refreshVersion
+      };
     },
-    provide: (field) => EditorView.decorations.from(field)
+    provide: (field) => EditorView.decorations.from(field, (value) => value.decorations)
   }));
 }
 
-function buildDecorations(state: EditorState, options: LivePreviewHtmlWidgetsOptions): DecorationSet {
+function buildDecorationState(
+  state: EditorState,
+  options: LivePreviewHtmlWidgetsOptions,
+  refreshVersion: number
+): LivePreviewDecorationState {
   if (!state.field(editorLivePreviewField, false)) {
-    return Decoration.none;
+    return {
+      decorations: Decoration.none,
+      refreshVersion
+    };
   }
 
   const settings = options.getSettings();
   if (!settings.livePreviewHtmlWidgets && !settings.livePreviewEmbedWidgets) {
-    return Decoration.none;
+    return {
+      decorations: Decoration.none,
+      refreshVersion
+    };
   }
 
   const info = state.field(editorInfoField, false) as MarkdownFileInfo | undefined;
@@ -74,13 +96,18 @@ function buildDecorations(state: EditorState, options: LivePreviewHtmlWidgetsOpt
           ...options,
           sourcePath,
           range,
-          editorId: getActiveRichEditorId(settings.defaultEditor)
+          editorId: getActiveRichEditorId(settings.defaultEditor),
+          selected: selectionIntersectsRange(state, range),
+          refreshVersion
         })
       })
     );
   }
 
-  return builder.finish();
+  return {
+    decorations: builder.finish(),
+    refreshVersion
+  };
 }
 
 interface LivePreviewRange {
@@ -245,6 +272,8 @@ interface HtmlPreviewWidgetOptions extends LivePreviewHtmlWidgetsOptions {
   sourcePath: string;
   range: LivePreviewRange;
   editorId: HtmlEditorId;
+  selected: boolean;
+  refreshVersion: number;
 }
 
 class HtmlPreviewWidget extends WidgetType {
@@ -252,43 +281,67 @@ class HtmlPreviewWidget extends WidgetType {
     super();
   }
 
+  eq(other: WidgetType): boolean {
+    if (!(other instanceof HtmlPreviewWidget)) {
+      return false;
+    }
+
+    return this.options.refreshVersion === other.options.refreshVersion
+      && this.options.selected === other.options.selected
+      && this.getStableKey() === other.getStableKey();
+  }
+
   toDOM(view: EditorView): HTMLElement {
-    const containerEl = document.createElement("div");
+    const containerEl = document.createElement("div") as HtmlPreviewWidgetElement;
+    this.renderPreviewDom(containerEl, view, this.options.selected);
+
+    return containerEl;
+  }
+
+  destroy(dom: HTMLElement): void {
+    (dom as HtmlPreviewWidgetElement).htmlVInlineEditor?.dispose();
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+
+  private renderPreviewDom(containerEl: HtmlPreviewWidgetElement, view: EditorView, autoOpen: boolean): void {
+    containerEl.htmlVInlineEditor?.dispose();
+    containerEl.htmlVInlineEditor = undefined;
+    containerEl.empty();
+    containerEl.removeClass("is-editing");
     containerEl.addClass("html-v-live-widget");
     applyEmbedDimensions(containerEl, this.options.range);
 
     let opening = false;
-    const openInline = () => {
-      if (containerEl.hasClass("is-editing")) {
+    const openInline = async () => {
+      if (containerEl.hasClass("is-editing") || opening) {
         return;
       }
-      if (opening) {
-        return;
-      }
+
       opening = true;
-      void this.openInlineEditor(containerEl, view);
+      try {
+        await this.openInlineEditor(containerEl, view);
+      } finally {
+        opening = false;
+      }
     };
     const previewEl = containerEl.createDiv({ cls: "html-v-live-widget-preview" });
     const onEdit = (event: Event) => {
       event.preventDefault();
       event.stopPropagation();
-      openInline();
+      void openInline();
     };
     void this.renderPreview(previewEl, onEdit);
     this.addEditTrigger(containerEl, previewEl, onEdit);
-    if (selectionIntersectsRange(view.state, this.options.range)) {
+    if (autoOpen) {
       window.setTimeout(() => {
         if (containerEl.isConnected) {
-          openInline();
+          void openInline();
         }
       });
     }
-
-    return containerEl;
-  }
-
-  ignoreEvent(): boolean {
-    return true;
   }
 
   private addEditTrigger(containerEl: HTMLElement, previewEl: HTMLElement, onEdit: (event: Event) => void): void {
@@ -357,8 +410,7 @@ class HtmlPreviewWidget extends WidgetType {
                 from: this.options.range.from,
                 to: this.options.range.to,
                 insert: normalizeHtml(nextHtml)
-              },
-              effects: forceRefreshEffect.of()
+              }
             });
           }
 
@@ -371,13 +423,17 @@ class HtmlPreviewWidget extends WidgetType {
     }
   }
 
-  private async openInlineEditor(containerEl: HTMLElement, view: EditorView): Promise<void> {
+  private async openInlineEditor(containerEl: HtmlPreviewWidgetElement, view: EditorView): Promise<void> {
     try {
       const html = await this.readHtml();
       const inline = new InlineHtmlEditor(containerEl, view, {
         ...this.options,
-        initialHtml: html
+        initialHtml: html,
+        onClose: () => {
+          this.renderPreviewDom(containerEl, view, false);
+        }
       });
+      containerEl.htmlVInlineEditor = inline;
       await inline.mount();
     } catch (error) {
       console.error("Failed to open inline HTML editor", error);
@@ -414,10 +470,38 @@ class HtmlPreviewWidget extends WidgetType {
 
     return this.resolveEmbeddedFile()?.path ?? this.options.sourcePath;
   }
+
+  private getStableKey(): string {
+    const range = this.options.range;
+    if (range.type === "html") {
+      return [
+        range.type,
+        range.from,
+        range.to,
+        range.tagName ?? "",
+        range.html ?? ""
+      ].join("\u0000");
+    }
+
+    return [
+      range.type,
+      range.from,
+      range.to,
+      range.linktext ?? "",
+      range.markdown ?? "",
+      range.width ?? "",
+      range.height ?? ""
+    ].join("\u0000");
+  }
+}
+
+interface HtmlPreviewWidgetElement extends HTMLElement {
+  htmlVInlineEditor?: InlineHtmlEditor;
 }
 
 interface InlineHtmlEditorOptions extends HtmlPreviewWidgetOptions {
   initialHtml: string;
+  onClose: () => void;
 }
 
 class InlineHtmlEditor {
@@ -431,6 +515,8 @@ class InlineHtmlEditor {
   private sourceModeSelectEl: HTMLSelectElement | null = null;
   private feedbackBubbleEl: HTMLElement | null = null;
   private feedbackTimer: number | null = null;
+  private outsideAbort: AbortController | null = null;
+  private closed = false;
 
   constructor(
     private containerEl: HTMLElement,
@@ -447,6 +533,7 @@ class InlineHtmlEditor {
   async mount(): Promise<void> {
     this.containerEl.empty();
     this.containerEl.addClass("is-editing");
+    this.installOutsideClickCloser();
 
     const toolbarEl = this.containerEl.createDiv({ cls: "html-v-live-widget-toolbar" });
     stopObsidianMouseBubble(toolbarEl);
@@ -477,7 +564,7 @@ class InlineHtmlEditor {
 
     const refreshButton = createIconButton(toolbarEl, "refresh-cw", "Refresh preview");
     refreshButton.addEventListener("click", () => {
-      this.view.dispatch({ effects: forceRefreshEffect.of() });
+      void this.close();
     });
 
     const inlineButton = createIconButton(toolbarEl, "panel-bottom-open", "Inline edit");
@@ -558,9 +645,7 @@ class InlineHtmlEditor {
     });
     protectObsidianButton(cancelButton);
     cancelButton.addEventListener("click", () => {
-      this.editor?.destroy();
-      this.editor = null;
-      this.view.dispatch({ effects: forceRefreshEffect.of() });
+      void this.close();
     });
 
     const saveButton = footerEl.createEl("button", {
@@ -573,6 +658,74 @@ class InlineHtmlEditor {
     });
 
     await this.mountEditor(sourceModeSelectEl);
+  }
+
+  dispose(): void {
+    this.cleanup();
+    this.closed = true;
+  }
+
+  private installOutsideClickCloser(): void {
+    this.outsideAbort?.abort();
+    const abort = new AbortController();
+    this.outsideAbort = abort;
+    document.addEventListener("mousedown", (event) => {
+      if (this.shouldKeepOpenForTarget(event.target)) {
+        return;
+      }
+
+      void this.close();
+    }, {
+      capture: true,
+      signal: abort.signal
+    });
+  }
+
+  private shouldKeepOpenForTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof Node)) {
+      return false;
+    }
+
+    if (this.containerEl.contains(target)) {
+      return true;
+    }
+
+    if (target instanceof Element) {
+      return Boolean(target.closest([
+        ".html-v-live-widget.is-editing",
+        ".tox-hugerte-aux",
+        ".tox-tinymce-aux",
+        ".tox-silver-sink",
+        ".tox-dialog-wrap",
+        ".tox-pop",
+        ".tox-menu",
+        ".tox-tooltip"
+      ].join(",")));
+    }
+
+    return false;
+  }
+
+  private async close(): Promise<void> {
+    if (this.closed) {
+      return;
+    }
+
+    this.cleanup();
+    this.closed = true;
+    this.options.onClose();
+  }
+
+  private cleanup(): void {
+    this.outsideAbort?.abort();
+    this.outsideAbort = null;
+    if (this.feedbackTimer !== null) {
+      window.clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = null;
+    }
+    this.editor?.destroy();
+    this.editor = null;
+    (this.containerEl as HtmlPreviewWidgetElement).htmlVInlineEditor = undefined;
   }
 
   private async switchEditor(nextId: HtmlEditorId): Promise<void> {
@@ -614,23 +767,27 @@ class InlineHtmlEditor {
       }
       await this.options.app.vault.modify(file, normalizeHtml(this.html));
       if (this.markdown && this.markdown !== this.options.range.markdown) {
+        this.cleanup();
+        this.closed = true;
         this.view.dispatch({
           changes: {
             from: this.options.range.from,
             to: this.options.range.to,
             insert: this.markdown
-          },
-          effects: forceRefreshEffect.of()
+          }
         });
+      } else {
+        await this.close();
       }
     } else {
+      this.cleanup();
+      this.closed = true;
       this.view.dispatch({
         changes: {
           from: this.options.range.from,
           to: this.options.range.to,
           insert: normalizeHtml(this.html)
-        },
-        effects: forceRefreshEffect.of()
+        }
       });
     }
     new Notice("HTML saved.");

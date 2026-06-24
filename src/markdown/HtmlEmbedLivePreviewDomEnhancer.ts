@@ -33,7 +33,11 @@ export class HtmlEmbedLivePreviewDomEnhancer {
       return;
     }
 
-    if (this.activeController.containsEventTarget(event.target) || isHugeRteAuxiliaryTarget(event.target)) {
+    if (
+      this.activeController.containsEventTarget(event.target)
+      || isHugeRteAuxiliaryTarget(event.target)
+      || isHtmlVInlineEditorTarget(event.target)
+    ) {
       return;
     }
 
@@ -646,6 +650,11 @@ function getMarkdownLinktext(markdown: string): string {
 function isHugeRteAuxiliaryTarget(target: EventTarget | null): boolean {
   return target instanceof Element
     && Boolean(target.closest(".tox-hugerte-aux, .tox-tinymce-aux, .tox-silver-sink, .tox-dialog-wrap, .tox-pop, .tox-menu, .tox-tooltip"));
+}
+
+function isHtmlVInlineEditorTarget(target: EventTarget | null): boolean {
+  return target instanceof Element
+    && Boolean(target.closest(".html-v-live-widget.is-editing"));
 }
 
 function createIconButton(parent: HTMLElement, icon: string, label: string): HTMLButtonElement {
