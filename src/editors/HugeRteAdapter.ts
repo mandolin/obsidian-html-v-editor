@@ -1,0 +1,278 @@
+import hugerte, { type Editor } from "hugerte";
+import "hugerte/icons/default";
+import "hugerte/models/dom";
+import "hugerte/plugins/advlist";
+import "hugerte/plugins/autolink";
+import "hugerte/plugins/code";
+import "hugerte/plugins/fullscreen";
+import "hugerte/plugins/image";
+import "hugerte/plugins/link";
+import "hugerte/plugins/lists";
+import "hugerte/plugins/media";
+import "hugerte/plugins/table";
+import "hugerte/themes/silver";
+
+import type { EditorOptions, HtmlEditorAdapter } from "./HtmlEditorAdapter";
+import { stopObsidianContextMenu } from "./editorDom";
+
+const HUGERTE_CONTENT_STYLE = [
+  "body{font-family:var(--font-text,Arial,sans-serif);font-size:16px;line-height:1.5;margin:12px;}",
+  "table{border-collapse:collapse;}",
+  "td,th{border:1px solid #999;padding:4px 8px;}",
+  "th{font-weight:700;}",
+  "td[data-mce-selected],th[data-mce-selected]{position:relative;background:rgba(76,141,255,.22)!important;outline:2px solid #4c8dff;outline-offset:-2px;}",
+  "td[data-mce-selected]::after,th[data-mce-selected]::after{content:'';position:absolute;inset:-1px;border:1px solid rgba(76,141,255,.7);pointer-events:none;}",
+  ".ephox-snooker-resizer-bar{background-color:#4c8dff;opacity:0;-webkit-user-select:none;-moz-user-select:none;user-select:none;}",
+  ".ephox-snooker-resizer-cols{cursor:col-resize!important;}",
+  ".ephox-snooker-resizer-rows{cursor:row-resize!important;}",
+  ".ephox-snooker-resizer-bar.ephox-snooker-resizer-bar-dragging{opacity:.85!important;}",
+  "body.html-v-table-resizing-cols,body.html-v-table-resizing-cols *{cursor:col-resize!important;}",
+  "body.html-v-table-resizing-rows,body.html-v-table-resizing-rows *{cursor:row-resize!important;}"
+].join(" ");
+
+export class HugeRteAdapter implements HtmlEditorAdapter {
+  readonly id = "hugerte";
+  readonly displayName = "HugeRTE";
+
+  private editor: Editor | null = null;
+  private target: HTMLTextAreaElement | null = null;
+
+  async mount(container: HTMLElement, html: string, options: EditorOptions): Promise<void> {
+    this.destroy();
+
+    container.empty();
+    stopObsidianContextMenu(container);
+    this.target = container.createEl("textarea", {
+      cls: "html-v-editor-hugerte-target"
+    });
+    this.target.value = html;
+
+    const editors = await hugerte.init({
+      target: this.target,
+      base_url: options.assetsBaseUrl,
+      suffix: ".min",
+      promotion: false,
+      branding: false,
+      menubar: false,
+      statusbar: true,
+      resize: false,
+      height: "100%",
+      skin: false,
+      content_css: false,
+      object_resizing: "table",
+      table_grid: true,
+      table_resize_bars: true,
+      mobile: {
+        table_grid: true,
+        object_resizing: "table",
+        resize: false
+      },
+      content_style: HUGERTE_CONTENT_STYLE,
+      plugins: "advlist autolink lists link image media table code fullscreen",
+      toolbar: "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | removeformat code fullscreen",
+      setup: (editor) => {
+        const emitChange = () => {
+          options.onChange?.(editor.getContent());
+        };
+        editor.on("Change Input Undo Redo", emitChange);
+        editor.on("init", () => {
+          stopObsidianContextMenu(editor.getDoc());
+          installTableResizeCursor(editor);
+          installTableDragSelection(editor);
+        });
+      }
+    });
+
+    this.editor = editors[0] ?? null;
+  }
+
+  getHtml(): string {
+    return this.editor?.getContent() ?? this.target?.value ?? "";
+  }
+
+  setHtml(html: string): void {
+    if (this.editor) {
+      this.editor.setContent(html);
+    } else if (this.target) {
+      this.target.value = html;
+    }
+  }
+
+  focus(): void {
+    this.editor?.focus();
+    this.target?.focus();
+  }
+
+  destroy(): void {
+    if (this.editor) {
+      cleanupHugeRteAuxiliaryUi();
+      this.editor.remove();
+      cleanupHugeRteAuxiliaryUi();
+      this.editor = null;
+    }
+    this.target = null;
+  }
+}
+
+export function cleanupHugeRteAuxiliaryUi(): void {
+  document.querySelectorAll<HTMLElement>([
+    ".tox-hugerte-aux",
+    ".tox-tinymce-aux",
+    ".tox-silver-sink",
+    ".tox-dialog-wrap",
+    ".tox-pop",
+    ".tox-menu",
+    ".tox-tooltip"
+  ].join(",")).forEach((el) => el.remove());
+}
+
+function installTableResizeCursor(editor: Editor): void {
+  const doc = editor.getDoc();
+  const win = editor.getWin();
+  const body = doc.body;
+
+  const clear = () => {
+    body?.classList.remove("html-v-table-resizing-cols");
+    body?.classList.remove("html-v-table-resizing-rows");
+  };
+
+  const onMouseDown = (event: MouseEvent) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (target.closest(".ephox-snooker-resizer-cols")) {
+      body?.classList.add("html-v-table-resizing-cols");
+      body?.classList.remove("html-v-table-resizing-rows");
+    } else if (target.closest(".ephox-snooker-resizer-rows")) {
+      body?.classList.add("html-v-table-resizing-rows");
+      body?.classList.remove("html-v-table-resizing-cols");
+    }
+  };
+
+  doc.addEventListener("mousedown", onMouseDown, true);
+  doc.addEventListener("mouseup", clear, true);
+  win.addEventListener("mouseup", clear, true);
+  win.addEventListener("blur", clear);
+  editor.on("remove", () => {
+    clear();
+    doc.removeEventListener("mousedown", onMouseDown, true);
+    doc.removeEventListener("mouseup", clear, true);
+    win.removeEventListener("mouseup", clear, true);
+    win.removeEventListener("blur", clear);
+  });
+}
+
+function installTableDragSelection(editor: Editor): void {
+  const doc = editor.getDoc();
+  let startCell: HTMLTableCellElement | null = null;
+  let selecting = false;
+
+  const onMouseDown = (event: MouseEvent) => {
+    if (event.button !== 0 || isHugeRteNativeDragTarget(event.target)) {
+      return;
+    }
+
+    startCell = getTableCell(event.target);
+    selecting = false;
+  };
+
+  const onMouseOver = (event: MouseEvent) => {
+    if (!startCell || (event.buttons & 1) !== 1 || isHugeRteNativeDragTarget(event.target)) {
+      return;
+    }
+
+    const endCell = getTableCell(event.target);
+    if (!endCell || endCell === startCell || endCell.closest("table") !== startCell.closest("table")) {
+      return;
+    }
+
+    selecting = true;
+    selectCellRange(doc, startCell, endCell);
+  };
+
+  const onMouseUp = (event: MouseEvent) => {
+    if (selecting) {
+      selectCellRange(doc, startCell, getTableCell(event.target) ?? startCell);
+      editor.nodeChanged();
+    }
+
+    startCell = null;
+    selecting = false;
+  };
+
+  doc.addEventListener("mousedown", onMouseDown);
+  doc.addEventListener("mouseover", onMouseOver);
+  doc.addEventListener("mouseup", onMouseUp);
+  editor.on("remove", () => {
+    doc.removeEventListener("mousedown", onMouseDown);
+    doc.removeEventListener("mouseover", onMouseOver);
+    doc.removeEventListener("mouseup", onMouseUp);
+  });
+}
+
+function isHugeRteNativeDragTarget(target: EventTarget | null): boolean {
+  if (!target || typeof (target as Element).closest !== "function") {
+    return false;
+  }
+
+  return Boolean((target as Element).closest([
+    ".ephox-snooker-resizer-bar",
+    ".ephox-snooker-resizer-bar-dragging",
+    ".mce-resizehandle",
+    ".mce-resize-backdrop",
+    ".mce-clonedresizable",
+    ".mce-resize-helper",
+    "[data-mce-bogus='all']"
+  ].join(",")));
+}
+
+function getTableCell(target: EventTarget | null): HTMLTableCellElement | null {
+  if (!target || typeof (target as Element).closest !== "function") {
+    return null;
+  }
+
+  const cell = (target as Element).closest("td,th");
+  return cell?.tagName === "TD" || cell?.tagName === "TH" ? cell as HTMLTableCellElement : null;
+}
+
+function selectCellRange(doc: Document, startCell: HTMLTableCellElement | null, endCell: HTMLTableCellElement | null): void {
+  if (!startCell || !endCell) {
+    return;
+  }
+
+  const table = startCell.closest("table");
+  if (!table || table !== endCell.closest("table")) {
+    return;
+  }
+
+  clearSelectedCells(doc);
+
+  const rows = Array.from(table.querySelectorAll("tr"));
+  const startRow = rows.indexOf(startCell.parentElement as HTMLTableRowElement);
+  const endRow = rows.indexOf(endCell.parentElement as HTMLTableRowElement);
+  if (startRow < 0 || endRow < 0) {
+    return;
+  }
+
+  const minRow = Math.min(startRow, endRow);
+  const maxRow = Math.max(startRow, endRow);
+  const minCell = Math.min(startCell.cellIndex, endCell.cellIndex);
+  const maxCell = Math.max(startCell.cellIndex, endCell.cellIndex);
+
+  for (let rowIndex = minRow; rowIndex <= maxRow; rowIndex += 1) {
+    const row = rows[rowIndex];
+    for (const cell of Array.from(row?.cells ?? [])) {
+      if (cell.cellIndex >= minCell && cell.cellIndex <= maxCell) {
+        cell.setAttribute("data-mce-selected", "1");
+      }
+    }
+  }
+}
+
+function clearSelectedCells(doc: Document): void {
+  for (const cell of Array.from(doc.querySelectorAll("td[data-mce-selected],th[data-mce-selected]"))) {
+    cell.removeAttribute("data-mce-selected");
+  }
+}

@@ -1,0 +1,774 @@
+import { Prec, RangeSetBuilder, StateEffect, StateField, type EditorState } from "@codemirror/state";
+import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
+import { Notice, TFile, editorInfoField, editorLivePreviewField, setIcon, type App, type MarkdownFileInfo } from "obsidian";
+
+import { HTML_FILE_EXTENSIONS, HTML_V_EDITOR_VIEW_TYPE } from "../constants";
+import {
+  createHtmlEditorAdapter,
+  getActiveRichEditorId,
+  HTML_ACTIVE_RICH_EDITOR_DEFINITIONS,
+  isRichHtmlEditorId
+} from "../editors/HtmlEditorRegistry";
+import type { HtmlEditorAdapter } from "../editors/HtmlEditorAdapter";
+import type { HtmlEditorId } from "../editors/HtmlEditorAdapter";
+import { isolateObsidianControl, protectObsidianButton, stopObsidianMouseBubble } from "../editors/editorDom";
+import { HtmlBlockEditModal } from "../modals/HtmlBlockEditModal";
+import { HtmlPreviewRenderer } from "../render/HtmlPreviewRenderer";
+import { renderHtmlForPreview } from "../security/HtmlSecurityPolicy";
+import type { HtmlVEditorSettings } from "../settings/settings";
+import { applyEmbedDimensions, parseEmbedDimensions, parseHtmlEmbedText, type HtmlEmbedSpec } from "./HtmlEmbedParser";
+
+export interface LivePreviewHtmlWidgetsOptions {
+  app: App;
+  assetsBaseUrl: string;
+  getSettings: () => HtmlVEditorSettings;
+  getPreviewSettings: (sourcePath: string, html: string) => Promise<HtmlVEditorSettings>;
+}
+
+const forceRefreshEffect = StateEffect.define<void>();
+
+export function createLivePreviewHtmlWidgets(options: LivePreviewHtmlWidgetsOptions) {
+  return Prec.highest(StateField.define<DecorationSet>({
+    create: (state) => buildDecorations(state, options),
+    update: (decorations, transaction) => {
+      if (
+        transaction.docChanged
+        || transaction.selection
+        || transaction.effects.some((effect) => effect.is(forceRefreshEffect))
+      ) {
+        return buildDecorations(transaction.state, options);
+      }
+
+      return decorations.map(transaction.changes);
+    },
+    provide: (field) => EditorView.decorations.from(field)
+  }));
+}
+
+function buildDecorations(state: EditorState, options: LivePreviewHtmlWidgetsOptions): DecorationSet {
+  if (!state.field(editorLivePreviewField, false)) {
+    return Decoration.none;
+  }
+
+  const settings = options.getSettings();
+  if (!settings.livePreviewHtmlWidgets && !settings.livePreviewEmbedWidgets) {
+    return Decoration.none;
+  }
+
+  const info = state.field(editorInfoField, false) as MarkdownFileInfo | undefined;
+  const sourcePath = info?.file?.path ?? "";
+  const text = state.doc.toString();
+  const ranges = scanLivePreviewRanges(text, {
+    includeHtmlBlocks: settings.livePreviewHtmlWidgets,
+    includeEmbeds: settings.livePreviewEmbedWidgets
+  });
+
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const range of ranges) {
+    builder.add(
+      range.from,
+      range.to,
+      Decoration.replace({
+        block: true,
+        widget: new HtmlPreviewWidget({
+          ...options,
+          sourcePath,
+          range,
+          editorId: getActiveRichEditorId(settings.defaultEditor)
+        })
+      })
+    );
+  }
+
+  return builder.finish();
+}
+
+interface LivePreviewRange {
+  type: "html" | "embed";
+  from: number;
+  to: number;
+  html?: string;
+  tagName?: string;
+  linktext?: string;
+  embedSpec?: HtmlEmbedSpec;
+  markdown?: string;
+  width?: number;
+  height?: number;
+}
+
+interface ScanOptions {
+  includeHtmlBlocks: boolean;
+  includeEmbeds: boolean;
+}
+
+const BLOCK_TAGS = new Set([
+  "article",
+  "aside",
+  "blockquote",
+  "details",
+  "dialog",
+  "div",
+  "figure",
+  "footer",
+  "form",
+  "header",
+  "main",
+  "nav",
+  "ol",
+  "section",
+  "table",
+  "ul"
+]);
+
+const BLOCK_START_PATTERN = /^(\s*)<([a-z][\w:-]*)(?:\s[^<>]*)?>/i;
+
+function scanLivePreviewRanges(text: string, options: ScanOptions): LivePreviewRange[] {
+  const ranges: LivePreviewRange[] = [];
+  const lines = text.split("\n");
+  let offset = 0;
+  let inFence = false;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    const trimmed = line.trim();
+
+    if (/^```/.test(trimmed)) {
+      inFence = !inFence;
+    }
+
+    if (!inFence && options.includeEmbeds) {
+      const embedMatch = line.match(/^(\s*)!\[\[([^|\]#]+?\.(?:html|htm))(?:#[^|\]]*)?(?:\|([^\]]+))?]]\s*$/i);
+      if (embedMatch) {
+        const linktext = embedMatch[2].trim();
+        const dimensions = parseEmbedDimensions(embedMatch[3]);
+        ranges.push({
+          type: "embed",
+          from: offset,
+          to: offset + line.length,
+          linktext,
+          markdown: line.trim(),
+          embedSpec: {
+            linktext,
+            ...dimensions
+          },
+          ...dimensions
+        });
+      }
+    }
+
+    if (!inFence && options.includeHtmlBlocks) {
+      const startMatch = line.match(BLOCK_START_PATTERN);
+      const tagName = startMatch?.[2]?.toLowerCase();
+      if (tagName && BLOCK_TAGS.has(tagName)) {
+        if (line.includes(`</${tagName}>`)) {
+          const from = offset + (startMatch?.[1]?.length ?? 0);
+          ranges.push({
+            type: "html",
+            from,
+            to: offset + line.length,
+            tagName,
+            html: text.slice(from, offset + line.length)
+          });
+        } else {
+          const close = findClosingLine(lines, lineIndex, tagName);
+          if (close <= lineIndex) {
+            offset += line.length + 1;
+            continue;
+          }
+          const from = offset + (startMatch?.[1]?.length ?? 0);
+          const to = offsetForLine(lines, close) + (lines[close]?.length ?? 0);
+          ranges.push({
+            type: "html",
+            from,
+            to,
+            tagName,
+            html: text.slice(from, to)
+          });
+          lineIndex = close;
+          offset = offsetForLine(lines, lineIndex);
+        }
+      }
+    }
+
+    offset += line.length + 1;
+  }
+
+  return ranges.sort((a, b) => a.from - b.from);
+}
+
+function findClosingLine(lines: string[], startLine: number, tagName: string): number {
+  let depth = 0;
+  const tagPattern = new RegExp(`<(/?)${escapeRegExp(tagName)}(?:\\s[^<>]*)?>`, "gi");
+
+  for (let lineIndex = startLine; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    for (const match of line.matchAll(tagPattern)) {
+      const raw = match[0];
+      if (match[1] === "/") {
+        depth -= 1;
+      } else if (!raw.endsWith("/>")) {
+        depth += 1;
+      }
+
+      if (depth === 0) {
+        return lineIndex;
+      }
+    }
+  }
+
+  return -1;
+}
+
+function offsetForLine(lines: string[], targetLine: number): number {
+  let offset = 0;
+  for (let line = 0; line < targetLine; line += 1) {
+    offset += (lines[line]?.length ?? 0) + 1;
+  }
+  return offset;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function selectionIntersectsRange(state: EditorState, range: LivePreviewRange): boolean {
+  return state.selection.ranges.some((selection) => {
+    const from = Math.min(selection.from, selection.to);
+    const to = Math.max(selection.from, selection.to);
+    return (from >= range.from && from <= range.to)
+      || (to >= range.from && to <= range.to)
+      || (from <= range.from && to >= range.to);
+  });
+}
+
+interface HtmlPreviewWidgetOptions extends LivePreviewHtmlWidgetsOptions {
+  sourcePath: string;
+  range: LivePreviewRange;
+  editorId: HtmlEditorId;
+}
+
+class HtmlPreviewWidget extends WidgetType {
+  constructor(private options: HtmlPreviewWidgetOptions) {
+    super();
+  }
+
+  toDOM(view: EditorView): HTMLElement {
+    const containerEl = document.createElement("div");
+    containerEl.addClass("html-v-live-widget");
+    applyEmbedDimensions(containerEl, this.options.range);
+
+    let opening = false;
+    const openInline = () => {
+      if (containerEl.hasClass("is-editing")) {
+        return;
+      }
+      if (opening) {
+        return;
+      }
+      opening = true;
+      void this.openInlineEditor(containerEl, view);
+    };
+    const previewEl = containerEl.createDiv({ cls: "html-v-live-widget-preview" });
+    const onEdit = (event: Event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openInline();
+    };
+    void this.renderPreview(previewEl, onEdit);
+    this.addEditTrigger(containerEl, previewEl, onEdit);
+    if (selectionIntersectsRange(view.state, this.options.range)) {
+      window.setTimeout(() => {
+        if (containerEl.isConnected) {
+          openInline();
+        }
+      });
+    }
+
+    return containerEl;
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+
+  private addEditTrigger(containerEl: HTMLElement, previewEl: HTMLElement, onEdit: (event: Event) => void): void {
+    if (this.options.getSettings().livePreviewEditTrigger === "click") {
+      const clickTargetEl = containerEl.createDiv({
+        cls: "html-v-live-widget-click-target",
+        attr: {
+          "aria-label": "Edit HTML",
+          role: "button",
+          tabindex: "0"
+        }
+      });
+      clickTargetEl.addEventListener("click", onEdit);
+      clickTargetEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          onEdit(event);
+        }
+      });
+      return;
+    }
+
+    const editButton = createIconButton(containerEl, "pencil", this.options.range.type === "embed" ? "Edit embedded HTML" : "Edit HTML block");
+    editButton.addClass("html-v-live-widget-float-edit");
+    containerEl.addClass("html-v-live-widget-has-float-edit");
+    editButton.addEventListener("click", onEdit);
+  }
+
+  private async renderPreview(previewEl: HTMLElement, _onEdit: (event: Event) => void): Promise<void> {
+    try {
+      const html = await this.readHtml();
+      const previewSettings = await this.options.getPreviewSettings(this.getPreviewSourcePath(), html);
+      const preview = renderHtmlForPreview(html, previewSettings);
+      const renderer = new HtmlPreviewRenderer();
+      renderer.render(previewEl, preview.html, {
+        sandbox: preview.sandbox
+      });
+    } catch (error) {
+      console.error("Failed to render live preview HTML widget", error);
+      previewEl.empty();
+      previewEl.createDiv({
+        cls: "html-v-live-widget-error",
+        text: "Unable to render HTML preview."
+      });
+    }
+  }
+
+  private async openEditor(view: EditorView): Promise<void> {
+    try {
+      const html = await this.readHtml();
+      new HtmlBlockEditModal(this.options.app, {
+        title: this.options.range.type === "embed" ? `Edit ${this.options.range.linktext ?? "HTML file"}` : "Edit HTML block",
+        initialHtml: html,
+        defaultEditorId: this.options.editorId,
+        assetsBaseUrl: this.options.assetsBaseUrl,
+        sourceEditorMode: this.options.getSettings().defaultSourceEditorMode,
+        onSave: async (nextHtml) => {
+          if (this.options.range.type === "embed") {
+            const file = this.resolveEmbeddedFile();
+            if (!(file instanceof TFile)) {
+              throw new Error("The embedded HTML file could not be resolved.");
+            }
+            await this.options.app.vault.modify(file, normalizeHtml(nextHtml));
+          } else {
+            view.dispatch({
+              changes: {
+                from: this.options.range.from,
+                to: this.options.range.to,
+                insert: normalizeHtml(nextHtml)
+              },
+              effects: forceRefreshEffect.of()
+            });
+          }
+
+          new Notice("HTML saved.");
+        }
+      }).open();
+    } catch (error) {
+      console.error("Failed to open live preview HTML editor", error);
+      new Notice(error instanceof Error ? error.message : "Unable to edit HTML.");
+    }
+  }
+
+  private async openInlineEditor(containerEl: HTMLElement, view: EditorView): Promise<void> {
+    try {
+      const html = await this.readHtml();
+      const inline = new InlineHtmlEditor(containerEl, view, {
+        ...this.options,
+        initialHtml: html
+      });
+      await inline.mount();
+    } catch (error) {
+      console.error("Failed to open inline HTML editor", error);
+      new Notice(error instanceof Error ? error.message : "Unable to edit HTML inline.");
+    }
+  }
+
+  private async readHtml(): Promise<string> {
+    if (this.options.range.type === "html") {
+      return this.options.range.html ?? "";
+    }
+
+    const file = this.resolveEmbeddedFile();
+    if (!(file instanceof TFile)) {
+      throw new Error("The embedded HTML file could not be resolved.");
+    }
+
+    return this.options.app.vault.cachedRead(file);
+  }
+
+  private resolveEmbeddedFile(): TFile | null {
+    if (!this.options.range.linktext) {
+      return null;
+    }
+
+    const file = this.options.app.metadataCache.getFirstLinkpathDest(this.options.range.linktext, this.options.sourcePath);
+    return file instanceof TFile ? file : null;
+  }
+
+  private getPreviewSourcePath(): string {
+    if (this.options.range.type === "html") {
+      return this.options.sourcePath;
+    }
+
+    return this.resolveEmbeddedFile()?.path ?? this.options.sourcePath;
+  }
+}
+
+interface InlineHtmlEditorOptions extends HtmlPreviewWidgetOptions {
+  initialHtml: string;
+}
+
+class InlineHtmlEditor {
+  private html: string;
+  private editorId: HtmlEditorId;
+  private richEditorId: HtmlEditorId;
+  private sourceEditorMode: "codemirror" | "textarea";
+  private markdown: string;
+  private editor: HtmlEditorAdapter | null = null;
+  private editorHostEl: HTMLElement | null = null;
+  private sourceModeSelectEl: HTMLSelectElement | null = null;
+  private feedbackBubbleEl: HTMLElement | null = null;
+  private feedbackTimer: number | null = null;
+
+  constructor(
+    private containerEl: HTMLElement,
+    private view: EditorView,
+    private options: InlineHtmlEditorOptions
+  ) {
+    this.html = options.initialHtml;
+    this.editorId = getActiveRichEditorId(options.editorId);
+    this.richEditorId = this.editorId;
+    this.sourceEditorMode = options.getSettings().defaultSourceEditorMode;
+    this.markdown = options.range.markdown ?? "";
+  }
+
+  async mount(): Promise<void> {
+    this.containerEl.empty();
+    this.containerEl.addClass("is-editing");
+
+    const toolbarEl = this.containerEl.createDiv({ cls: "html-v-live-widget-toolbar" });
+    stopObsidianMouseBubble(toolbarEl);
+    if (this.options.range.type === "embed") {
+      const sourceInputEl = toolbarEl.createEl("input", {
+        cls: "html-v-live-widget-markdown-input",
+        type: "text",
+        value: this.markdown || `![[${this.options.range.linktext ?? ""}]]`
+      });
+      isolateObsidianControl(sourceInputEl);
+      sourceInputEl.addEventListener("input", () => {
+        this.markdown = sourceInputEl.value;
+      });
+      sourceInputEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+          void this.reloadEmbeddedMarkdown(sourceInputEl.value);
+        }
+      });
+      this.feedbackBubbleEl = toolbarEl.createDiv({
+        cls: "html-v-live-widget-embed-feedback is-hidden",
+        attr: {
+          role: "status"
+        }
+      });
+    }
+
+    const refreshButton = createIconButton(toolbarEl, "refresh-cw", "Refresh preview");
+    refreshButton.addEventListener("click", () => {
+      this.view.dispatch({ effects: forceRefreshEffect.of() });
+    });
+
+    const inlineButton = createIconButton(toolbarEl, "panel-bottom-open", "Inline edit");
+    inlineButton.addClass("is-active");
+    inlineButton.addEventListener("click", () => {
+      void this.switchEditor(this.editorId);
+    });
+
+    const modalButton = createIconButton(toolbarEl, "square-stack", "Modal edit");
+    modalButton.addEventListener("click", () => {
+      void this.openModalEditor();
+    });
+
+    const tabButton = createIconButton(toolbarEl, "external-link", "New tab edit");
+    tabButton.addEventListener("click", () => {
+      void this.openNewTabEditor();
+    });
+
+    const editorSelectEl = toolbarEl.createEl("select", {
+      cls: "html-v-live-widget-editor-select"
+    });
+    editorSelectEl.addClass("is-hidden");
+    for (const editor of HTML_ACTIVE_RICH_EDITOR_DEFINITIONS) {
+      editorSelectEl.createEl("option", {
+        text: editor.displayName,
+        value: editor.id
+      });
+    }
+    isolateObsidianControl(editorSelectEl);
+    editorSelectEl.value = this.editorId;
+    editorSelectEl.addEventListener("change", () => {
+      if (isRichHtmlEditorId(editorSelectEl.value)) {
+        void this.switchEditor(editorSelectEl.value);
+      }
+    });
+
+    const editButton = toolbarEl.createEl("button", {
+      cls: "html-v-live-widget-text-button",
+      text: "Edit"
+    });
+    protectObsidianButton(editButton);
+    editButton.addEventListener("click", () => {
+      void this.switchEditor(this.richEditorId);
+    });
+
+    const sourceButton = toolbarEl.createEl("button", {
+      cls: "html-v-live-widget-text-button",
+      text: "Source"
+    });
+    protectObsidianButton(sourceButton);
+    sourceButton.addEventListener("click", () => {
+      void this.switchEditor("source");
+    });
+
+    const sourceModeSelectEl = toolbarEl.createEl("select", {
+      cls: "html-v-live-widget-source-select"
+    });
+    this.sourceModeSelectEl = sourceModeSelectEl;
+    sourceModeSelectEl.createEl("option", { text: "CodeMirror", value: "codemirror" });
+    sourceModeSelectEl.createEl("option", { text: "Textarea", value: "textarea" });
+    isolateObsidianControl(sourceModeSelectEl);
+    sourceModeSelectEl.value = this.sourceEditorMode;
+    sourceModeSelectEl.toggleClass("is-hidden", this.editorId !== "source");
+    sourceModeSelectEl.addEventListener("change", () => {
+      if (sourceModeSelectEl.value === "codemirror" || sourceModeSelectEl.value === "textarea") {
+        this.sourceEditorMode = sourceModeSelectEl.value;
+        void this.switchEditor("source");
+      }
+    });
+
+    this.editorHostEl = this.containerEl.createDiv({ cls: "html-v-live-widget-editor-host" });
+
+    const footerEl = this.containerEl.createDiv({ cls: "html-v-live-widget-footer" });
+    stopObsidianMouseBubble(footerEl);
+    const cancelButton = footerEl.createEl("button", {
+      cls: "html-v-live-widget-text-button",
+      text: "Cancel"
+    });
+    protectObsidianButton(cancelButton);
+    cancelButton.addEventListener("click", () => {
+      this.editor?.destroy();
+      this.editor = null;
+      this.view.dispatch({ effects: forceRefreshEffect.of() });
+    });
+
+    const saveButton = footerEl.createEl("button", {
+      cls: "html-v-live-widget-text-button mod-cta",
+      text: "Save"
+    });
+    protectObsidianButton(saveButton);
+    saveButton.addEventListener("click", () => {
+      void this.save();
+    });
+
+    await this.mountEditor(sourceModeSelectEl);
+  }
+
+  private async switchEditor(nextId: HtmlEditorId): Promise<void> {
+    this.html = this.editor?.getHtml() ?? this.html;
+    this.editor?.destroy();
+    this.editor = null;
+    this.editorId = nextId === "source" ? "source" : getActiveRichEditorId(nextId);
+    if (this.editorId !== "source") {
+      this.richEditorId = this.editorId;
+    }
+    await this.mountEditor();
+  }
+
+  private async mountEditor(sourceModeSelectEl?: HTMLSelectElement): Promise<void> {
+    if (!this.editorHostEl) {
+      return;
+    }
+
+    (sourceModeSelectEl ?? this.sourceModeSelectEl)?.toggleClass("is-hidden", this.editorId !== "source");
+    this.editorHostEl.empty();
+    const editor = createHtmlEditorAdapter(this.editorId);
+    this.editor = editor;
+    await editor.mount(this.editorHostEl, this.html, {
+      assetsBaseUrl: this.options.assetsBaseUrl,
+      sourceEditorMode: this.sourceEditorMode,
+      onChange: (html) => {
+        this.html = html;
+      }
+    });
+    editor.focus();
+  }
+
+  private async save(): Promise<void> {
+    this.html = this.editor?.getHtml() ?? this.html;
+    if (this.options.range.type === "embed") {
+      const file = this.resolveEmbeddedFile();
+      if (!(file instanceof TFile)) {
+        throw new Error("The embedded HTML file could not be resolved.");
+      }
+      await this.options.app.vault.modify(file, normalizeHtml(this.html));
+      if (this.markdown && this.markdown !== this.options.range.markdown) {
+        this.view.dispatch({
+          changes: {
+            from: this.options.range.from,
+            to: this.options.range.to,
+            insert: this.markdown
+          },
+          effects: forceRefreshEffect.of()
+        });
+      }
+    } else {
+      this.view.dispatch({
+        changes: {
+          from: this.options.range.from,
+          to: this.options.range.to,
+          insert: normalizeHtml(this.html)
+        },
+        effects: forceRefreshEffect.of()
+      });
+    }
+    new Notice("HTML saved.");
+  }
+
+  private async openModalEditor(): Promise<void> {
+    this.html = this.editor?.getHtml() ?? this.html;
+    new HtmlBlockEditModal(this.options.app, {
+      title: this.options.range.type === "embed" ? `Edit ${this.options.range.linktext ?? "HTML file"}` : "Edit HTML block",
+      initialHtml: this.html,
+      defaultEditorId: this.editorId,
+      assetsBaseUrl: this.options.assetsBaseUrl,
+      sourceEditorMode: this.sourceEditorMode,
+      onSave: async (nextHtml) => {
+        this.html = nextHtml;
+        await this.save();
+      }
+    }).open();
+  }
+
+  private async openNewTabEditor(): Promise<void> {
+    const file = this.resolveEmbeddedFile();
+    if (!(file instanceof TFile)) {
+      new Notice("New tab editing is available for embedded HTML files.");
+      return;
+    }
+
+    const leaf = this.options.app.workspace.getLeaf("tab");
+    await leaf.setViewState({
+      type: HTML_V_EDITOR_VIEW_TYPE,
+      state: { file: file.path },
+      active: true
+    });
+    await this.options.app.workspace.revealLeaf(leaf);
+  }
+
+  private async reloadEmbeddedMarkdown(markdown: string): Promise<void> {
+    const nextMarkdown = markdown.trim();
+    const spec = parseHtmlEmbedText(nextMarkdown);
+    if (!spec) {
+      this.showEmbedFeedback("Enter a valid HTML embed, for example ![[file.htm|600x400]].", "error");
+      return;
+    }
+
+    const file = this.resolveEmbeddedFileFromSpec(spec);
+    if (!(file instanceof TFile) || !HTML_FILE_EXTENSIONS.includes(file.extension.toLowerCase())) {
+      this.showEmbedFeedback(`HTML file not found: ${spec.linktext}`, "error");
+      return;
+    }
+
+    try {
+      const nextHtml = await this.options.app.vault.cachedRead(file);
+      this.markdown = nextMarkdown;
+      this.options.range.linktext = spec.linktext;
+      this.options.range.embedSpec = spec;
+      this.options.range.width = spec.width;
+      this.options.range.height = spec.height;
+      applyEmbedDimensions(this.containerEl, spec);
+      this.html = nextHtml;
+      this.editor?.setHtml(this.html);
+      this.showEmbedFeedback(`Loaded ${file.path}.`, "success");
+      this.updateMarkdownInDocument(nextMarkdown);
+    } catch (error) {
+      console.error("Failed to reload embedded HTML", error);
+      this.showEmbedFeedback(error instanceof Error ? error.message : "Unable to reload embedded HTML.", "error");
+    }
+  }
+
+  private updateMarkdownInDocument(nextMarkdown: string): void {
+    if (this.options.range.type !== "embed" || !nextMarkdown || nextMarkdown === this.options.range.markdown) {
+      return;
+    }
+
+    const from = this.options.range.from;
+    const to = this.options.range.to;
+    this.options.range.markdown = nextMarkdown;
+    this.options.range.to = from + nextMarkdown.length;
+    this.view.dispatch({
+      changes: {
+        from,
+        to,
+        insert: nextMarkdown
+      }
+    });
+  }
+
+  private showEmbedFeedback(message: string, variant: "error" | "success"): void {
+    if (!this.feedbackBubbleEl) {
+      if (variant === "error") {
+        new Notice(message);
+      }
+      return;
+    }
+
+    if (this.feedbackTimer !== null) {
+      window.clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = null;
+    }
+
+    this.feedbackBubbleEl.setText(message);
+    this.feedbackBubbleEl.removeClass("is-hidden");
+    this.feedbackBubbleEl.toggleClass("is-error", variant === "error");
+    this.feedbackBubbleEl.toggleClass("is-success", variant === "success");
+    this.feedbackTimer = window.setTimeout(() => {
+      this.feedbackBubbleEl?.addClass("is-hidden");
+      this.feedbackTimer = null;
+    }, variant === "error" ? 5200 : 2200);
+  }
+
+  private resolveEmbeddedFile(): TFile | null {
+    const spec = parseHtmlEmbedText(this.markdown) ?? this.options.range.embedSpec;
+    if (!spec?.linktext) {
+      return null;
+    }
+
+    return this.resolveEmbeddedFileFromSpec(spec);
+  }
+
+  private resolveEmbeddedFileFromSpec(spec: Pick<HtmlEmbedSpec, "linktext">): TFile | null {
+    const file = this.options.app.metadataCache.getFirstLinkpathDest(spec.linktext, this.options.sourcePath);
+    return file instanceof TFile ? file : null;
+  }
+}
+
+function createIconButton(parent: HTMLElement, icon: string, label: string): HTMLButtonElement {
+  const button = parent.createEl("button", {
+    cls: "html-v-live-widget-icon-button",
+    attr: {
+      "aria-label": label,
+      title: label,
+      type: "button"
+    }
+  });
+  setIcon(button, icon);
+  protectObsidianButton(button);
+  return button;
+}
+
+function normalizeHtml(html: string): string {
+  return html.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n+$/g, "");
+}

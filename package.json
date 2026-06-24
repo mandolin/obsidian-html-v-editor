@@ -1,0 +1,55 @@
+{
+  "name": "obsidian-html-v-editor",
+  "version": "0.1.0",
+  "description": "Visual HTML/HTM editor plugin for Obsidian.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs --watch",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && node tools/copy-hugerte-assets.mjs",
+    "copy:local": "node tools/copy-local-plugin.mjs",
+    "release": "npm run build && node tools/create-release.mjs",
+    "size": "node tools/report-build-size.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "html",
+    "editor"
+  ],
+  "author": "mandolin",
+  "license": "MIT",
+  "dependencies": {
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/view": "^6.43.2",
+    "@tiptap/core": "^3.27.1",
+    "@tiptap/extension-image": "^3.27.1",
+    "@tiptap/extension-link": "^3.27.1",
+    "@tiptap/extension-table": "^3.27.1",
+    "@tiptap/extension-table-cell": "^3.27.1",
+    "@tiptap/extension-table-header": "^3.27.1",
+    "@tiptap/extension-table-row": "^3.27.1",
+    "@tiptap/extension-underline": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.1",
+    "dompurify": "^3.4.11",
+    "hugerte": "^1.0.11",
+    "prosemirror-commands": "^1.7.1",
+    "prosemirror-history": "^1.5.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.9",
+    "prosemirror-schema-basic": "^1.2.4",
+    "prosemirror-schema-list": "^1.5.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-view": "^1.41.9"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.20.2",
+    "obsidian": "^1.5.12",
+    "typescript": "^5.4.2"
+  }
+}
