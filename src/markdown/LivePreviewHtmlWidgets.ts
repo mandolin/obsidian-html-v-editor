@@ -1,4 +1,4 @@
-import { Prec, RangeSetBuilder, StateEffect, StateField, type EditorState } from "@codemirror/state";
+import { Prec, RangeSetBuilder, StateField, type EditorState } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
 import { Notice, TFile, editorInfoField, editorLivePreviewField, setIcon, type App, type MarkdownFileInfo } from "obsidian";
 
@@ -25,56 +25,28 @@ export interface LivePreviewHtmlWidgetsOptions {
   getPreviewSettings: (sourcePath: string, html: string) => Promise<HtmlVEditorSettings>;
 }
 
-const forceRefreshEffect = StateEffect.define<void>();
-
-interface LivePreviewDecorationState {
-  decorations: DecorationSet;
-  refreshVersion: number;
-}
-
 export function createLivePreviewHtmlWidgets(options: LivePreviewHtmlWidgetsOptions) {
-  return Prec.highest(StateField.define<LivePreviewDecorationState>({
-    create: (state) => buildDecorationState(state, options, 0),
-    update: (value, transaction) => {
-      const refreshVersion = transaction.effects.some((effect) => effect.is(forceRefreshEffect))
-        ? value.refreshVersion + 1
-        : value.refreshVersion;
-
-      if (
-        transaction.docChanged
-        || transaction.selection
-        || refreshVersion !== value.refreshVersion
-      ) {
-        return buildDecorationState(transaction.state, options, refreshVersion);
+  return Prec.highest(StateField.define<DecorationSet>({
+    create: (state) => buildDecorations(state, options),
+    update: (decorations, transaction) => {
+      if (transaction.docChanged || transaction.selection) {
+        return buildDecorations(transaction.state, options);
       }
 
-      return {
-        decorations: value.decorations.map(transaction.changes),
-        refreshVersion
-      };
+      return decorations.map(transaction.changes);
     },
-    provide: (field) => EditorView.decorations.from(field, (value) => value.decorations)
+    provide: (field) => EditorView.decorations.from(field)
   }));
 }
 
-function buildDecorationState(
-  state: EditorState,
-  options: LivePreviewHtmlWidgetsOptions,
-  refreshVersion: number
-): LivePreviewDecorationState {
+function buildDecorations(state: EditorState, options: LivePreviewHtmlWidgetsOptions): DecorationSet {
   if (!state.field(editorLivePreviewField, false)) {
-    return {
-      decorations: Decoration.none,
-      refreshVersion
-    };
+    return Decoration.none;
   }
 
   const settings = options.getSettings();
   if (!settings.livePreviewHtmlWidgets && !settings.livePreviewEmbedWidgets) {
-    return {
-      decorations: Decoration.none,
-      refreshVersion
-    };
+    return Decoration.none;
   }
 
   const info = state.field(editorInfoField, false) as MarkdownFileInfo | undefined;
@@ -97,28 +69,25 @@ function buildDecorationState(
           sourcePath,
           range,
           editorId: getActiveRichEditorId(settings.defaultEditor),
-          selected: selectionIntersectsRange(state, range),
-          refreshVersion
+          selected: selectionIntersectsRange(state, range)
         })
       })
     );
   }
 
-  return {
-    decorations: builder.finish(),
-    refreshVersion
-  };
+  return builder.finish();
 }
 
 interface LivePreviewRange {
-  type: "html" | "embed";
+  type: "html-v" | "embed";
   from: number;
   to: number;
   html?: string;
-  tagName?: string;
   linktext?: string;
   embedSpec?: HtmlEmbedSpec;
   markdown?: string;
+  openingFence?: string;
+  closingFence?: string;
   width?: number;
   height?: number;
 }
@@ -128,26 +97,7 @@ interface ScanOptions {
   includeEmbeds: boolean;
 }
 
-const BLOCK_TAGS = new Set([
-  "article",
-  "aside",
-  "blockquote",
-  "details",
-  "dialog",
-  "div",
-  "figure",
-  "footer",
-  "form",
-  "header",
-  "main",
-  "nav",
-  "ol",
-  "section",
-  "table",
-  "ul"
-]);
-
-const BLOCK_START_PATTERN = /^(\s*)<([a-z][\w:-]*)(?:\s[^<>]*)?>/i;
+const HTML_V_FENCE_START_PATTERN = /^(\s{0,3})(`{3,}|~{3,})\s*html-v(?:\s+(.+?))?\s*$/i;
 
 function scanLivePreviewRanges(text: string, options: ScanOptions): LivePreviewRange[] {
   const ranges: LivePreviewRange[] = [];
@@ -159,7 +109,32 @@ function scanLivePreviewRanges(text: string, options: ScanOptions): LivePreviewR
     const line = lines[lineIndex] ?? "";
     const trimmed = line.trim();
 
-    if (/^```/.test(trimmed)) {
+    if (!inFence && options.includeHtmlBlocks) {
+      const fenceMatch = line.match(HTML_V_FENCE_START_PATTERN);
+      if (fenceMatch) {
+        const marker = fenceMatch[2];
+        const dimensions = parseEmbedDimensions(fenceMatch[3]);
+        const close = findFenceCloseLine(lines, lineIndex + 1, marker);
+        if (close > lineIndex) {
+          const from = offset;
+          const to = offsetForLine(lines, close) + (lines[close]?.length ?? 0);
+          ranges.push({
+            type: "html-v",
+            from,
+            to,
+            html: lines.slice(lineIndex + 1, close).join("\n"),
+            openingFence: line,
+            closingFence: lines[close] ?? marker,
+            ...dimensions
+          });
+          lineIndex = close;
+          offset = to + 1;
+          continue;
+        }
+      }
+    }
+
+    if (/^```/.test(trimmed) || /^~~~/.test(trimmed)) {
       inFence = !inFence;
     }
 
@@ -183,63 +158,19 @@ function scanLivePreviewRanges(text: string, options: ScanOptions): LivePreviewR
       }
     }
 
-    if (!inFence && options.includeHtmlBlocks) {
-      const startMatch = line.match(BLOCK_START_PATTERN);
-      const tagName = startMatch?.[2]?.toLowerCase();
-      if (tagName && BLOCK_TAGS.has(tagName)) {
-        if (line.includes(`</${tagName}>`)) {
-          const from = offset + (startMatch?.[1]?.length ?? 0);
-          ranges.push({
-            type: "html",
-            from,
-            to: offset + line.length,
-            tagName,
-            html: text.slice(from, offset + line.length)
-          });
-        } else {
-          const close = findClosingLine(lines, lineIndex, tagName);
-          if (close <= lineIndex) {
-            offset += line.length + 1;
-            continue;
-          }
-          const from = offset + (startMatch?.[1]?.length ?? 0);
-          const to = offsetForLine(lines, close) + (lines[close]?.length ?? 0);
-          ranges.push({
-            type: "html",
-            from,
-            to,
-            tagName,
-            html: text.slice(from, to)
-          });
-          lineIndex = close;
-          offset = offsetForLine(lines, lineIndex);
-        }
-      }
-    }
-
     offset += line.length + 1;
   }
 
   return ranges.sort((a, b) => a.from - b.from);
 }
 
-function findClosingLine(lines: string[], startLine: number, tagName: string): number {
-  let depth = 0;
-  const tagPattern = new RegExp(`<(/?)${escapeRegExp(tagName)}(?:\\s[^<>]*)?>`, "gi");
-
+function findFenceCloseLine(lines: string[], startLine: number, marker: string): number {
+  const markerChar = marker[0] ?? "`";
+  const minLength = marker.length;
+  const closePattern = new RegExp(`^\\s{0,3}${escapeRegExp(markerChar)}{${minLength},}\\s*$`);
   for (let lineIndex = startLine; lineIndex < lines.length; lineIndex += 1) {
-    const line = lines[lineIndex] ?? "";
-    for (const match of line.matchAll(tagPattern)) {
-      const raw = match[0];
-      if (match[1] === "/") {
-        depth -= 1;
-      } else if (!raw.endsWith("/>")) {
-        depth += 1;
-      }
-
-      if (depth === 0) {
-        return lineIndex;
-      }
+    if (closePattern.test(lines[lineIndex] ?? "")) {
+      return lineIndex;
     }
   }
 
@@ -273,7 +204,6 @@ interface HtmlPreviewWidgetOptions extends LivePreviewHtmlWidgetsOptions {
   range: LivePreviewRange;
   editorId: HtmlEditorId;
   selected: boolean;
-  refreshVersion: number;
 }
 
 class HtmlPreviewWidget extends WidgetType {
@@ -286,8 +216,7 @@ class HtmlPreviewWidget extends WidgetType {
       return false;
     }
 
-    return this.options.refreshVersion === other.options.refreshVersion
-      && this.options.selected === other.options.selected
+    return this.options.selected === other.options.selected
       && this.getStableKey() === other.getStableKey();
   }
 
@@ -409,7 +338,7 @@ class HtmlPreviewWidget extends WidgetType {
               changes: {
                 from: this.options.range.from,
                 to: this.options.range.to,
-                insert: normalizeHtml(nextHtml)
+                insert: buildHtmlVCodeBlock(this.options.range, nextHtml)
               }
             });
           }
@@ -442,7 +371,7 @@ class HtmlPreviewWidget extends WidgetType {
   }
 
   private async readHtml(): Promise<string> {
-    if (this.options.range.type === "html") {
+    if (this.options.range.type === "html-v") {
       return this.options.range.html ?? "";
     }
 
@@ -464,7 +393,7 @@ class HtmlPreviewWidget extends WidgetType {
   }
 
   private getPreviewSourcePath(): string {
-    if (this.options.range.type === "html") {
+    if (this.options.range.type === "html-v") {
       return this.options.sourcePath;
     }
 
@@ -473,12 +402,13 @@ class HtmlPreviewWidget extends WidgetType {
 
   private getStableKey(): string {
     const range = this.options.range;
-    if (range.type === "html") {
+    if (range.type === "html-v") {
       return [
         range.type,
         range.from,
         range.to,
-        range.tagName ?? "",
+        range.openingFence ?? "",
+        range.closingFence ?? "",
         range.html ?? ""
       ].join("\u0000");
     }
@@ -786,7 +716,7 @@ class InlineHtmlEditor {
         changes: {
           from: this.options.range.from,
           to: this.options.range.to,
-          insert: normalizeHtml(this.html)
+          insert: buildHtmlVCodeBlock(this.options.range, this.html)
         }
       });
     }
@@ -928,4 +858,19 @@ function createIconButton(parent: HTMLElement, icon: string, label: string): HTM
 
 function normalizeHtml(html: string): string {
   return html.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n+$/g, "");
+}
+
+function buildHtmlVCodeBlock(range: LivePreviewRange, html: string): string {
+  const openingFence = range.openingFence ?? "```html-v";
+  const closingFence = range.closingFence ?? getClosingFenceForOpening(openingFence);
+  return [
+    openingFence,
+    normalizeHtml(html),
+    closingFence
+  ].join("\n");
+}
+
+function getClosingFenceForOpening(openingFence: string): string {
+  const marker = openingFence.match(/^\s{0,3}(`{3,}|~{3,})/)?.[1] ?? "```";
+  return marker;
 }

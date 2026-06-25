@@ -4,7 +4,6 @@ import { editHtmlBlockAtCursor, editSelectedHtml } from "./commands/HtmlBlockEdi
 import { HTML_FILE_EXTENSIONS, HTML_V_EDITOR_VIEW_TYPE } from "./constants";
 import { cleanupHugeRteAuxiliaryUi } from "./editors/HugeRteAdapter";
 import { HtmlFileEmbedProcessor } from "./markdown/HtmlFileEmbedProcessor";
-import { RawHtmlBlockProcessor } from "./markdown/RawHtmlBlockProcessor";
 import { HtmlVCodeBlockProcessor } from "./markdown/HtmlVCodeBlockProcessor";
 import { createLivePreviewHtmlWidgets } from "./markdown/LivePreviewHtmlWidgets";
 import { HtmlTrustManager } from "./security/HtmlTrustManager";
@@ -31,8 +30,6 @@ export default class HtmlVEditorPlugin extends Plugin {
     this.addSettingTab(new HtmlVEditorSettingTab(this.app, this));
     const htmlVCodeBlockProcessor = new HtmlVCodeBlockProcessor({
       app: this.app,
-      assetsBaseUrl,
-      getSettings: () => this.settings,
       getPreviewSettings
     });
     this.registerMarkdownCodeBlockProcessor("html-v", (source, el, ctx) => {
@@ -47,14 +44,6 @@ export default class HtmlVEditorPlugin extends Plugin {
     this.registerMarkdownPostProcessor((el, ctx) => {
       htmlFileEmbedProcessor.process(el, ctx);
     }, 1000);
-    const rawHtmlBlockProcessor = new RawHtmlBlockProcessor({
-      app: this.app,
-      getSettings: () => this.settings,
-      getPreviewSettings
-    });
-    this.registerMarkdownPostProcessor((el, ctx) => {
-      rawHtmlBlockProcessor.process(el, ctx);
-    }, 999);
     this.registerEditorExtension(createLivePreviewHtmlWidgets({
       app: this.app,
       assetsBaseUrl,

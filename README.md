@@ -2,7 +2,7 @@
 
 HTML V Editor is an Obsidian plugin for editing and previewing HTML/HTM files inside a vault.
 
-Current status: local-testable MVP plus post-stage-7 feature work. The plugin can open `.html` and `.htm` files in a custom workspace tab with Preview, Edit, Source, and Save controls. Preview mode has configurable security levels and trust rules. Markdown `html-v` fenced code blocks, embedded HTML files, and raw HTML blocks can be previewed and edited from Markdown reading or Live Preview surfaces. Editor adapters can be switched at runtime.
+Current status: local-testable MVP plus post-stage-7 feature work. The plugin can open `.html` and `.htm` files in a custom workspace tab with Preview, Edit, Source, and Save controls. Preview mode has configurable security levels and trust rules. Markdown `html-v` fenced code blocks and embedded HTML files can be previewed and edited from Markdown reading or Live Preview surfaces. Plain raw HTML blocks are left to Obsidian by default, with command-based editing still available when explicitly invoked. Editor adapters can be switched at runtime.
 
 ## Development
 
@@ -137,11 +137,9 @@ Completed safety baseline:
 Completed Markdown code block support:
 
 - Registered the `html-v` fenced code block processor.
-- Renders `html-v` blocks as safe HTML previews in reading mode.
-- Adds an `Edit` button to each rendered block.
-- Opens a HugeRTE modal editor for the selected block.
-- Saves edited HTML back into the original fenced code block.
-- Verifies the original block range before replacing source text.
+- Renders `html-v` blocks as safe HTML previews in reading mode without plugin chrome.
+- Supports inline editing for `html-v` blocks in Live Preview.
+- Saves edited HTML back into the original fenced code block from Live Preview.
 
 Example:
 
@@ -150,6 +148,14 @@ Example:
 <section>
   <h2>Hello HTML</h2>
 </section>
+```
+````
+
+Optional Live Preview dimensions can be added after the language name:
+
+````markdown
+```html-v 800x600
+<table><tr><td>Fixed preview area</td></tr></table>
 ```
 ````
 
@@ -192,13 +198,13 @@ Supported cursor-detection tags include common block elements such as `div`, `se
 
 Live Preview support:
 
-- Complete raw HTML block elements are replaced with rendered widgets when Live Preview is active and the cursor is outside the block.
-- Use `Source` on the widget to move the cursor back to the raw HTML.
-- Use `Edit` to edit and replace the original Markdown source range.
+- Automatic Live Preview widgets are intentionally scoped to `html-v` fenced blocks.
+- Plain raw HTML blocks are left to Obsidian's native renderer to avoid compatibility issues with normal Markdown documents.
+- Use `Edit selected HTML with HTML V Editor` or `Edit HTML block at cursor with HTML V Editor` when you explicitly want to edit a raw HTML block.
 
 Known limitations:
 
-- Cursor and widget detection intentionally handle only complete, closed block-level HTML elements.
+- Cursor command detection intentionally handles only complete, closed block-level HTML elements.
 - It does not attempt to parse arbitrary malformed HTML.
 
 ## Stage 6 Scope

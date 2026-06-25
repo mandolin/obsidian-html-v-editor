@@ -115,8 +115,10 @@ Create:
 Verify:
 
 - Reading mode shows an HTML V preview block.
-- Edit opens a modal.
-- Saving replaces only the code block content.
+- Reading mode does not show an `HTML V` title bar or edit button.
+- In Live Preview, the fenced block is replaced with an HTML V widget when the cursor is outside the block.
+- In Live Preview, ` ```html-v 800x600 ` applies the requested preview dimensions.
+- Editing from Live Preview saves back to the fenced block.
 
 ## HTML File Embed
 
@@ -148,6 +150,5 @@ Verify:
 - `Edit selected HTML with HTML V Editor` replaces the selection.
 - `Edit HTML block at cursor with HTML V Editor` replaces the full block.
 - If no complete HTML block is found, no document content is changed.
-- In Live Preview, a complete closed raw HTML block is replaced with an HTML V widget when the cursor is outside the block.
-- The Live Preview widget Source button restores the raw Markdown source focus.
-- The Live Preview widget Edit button saves back into the original Markdown range.
+- In Live Preview and Reading mode, plain raw HTML blocks are rendered by Obsidian, not automatically replaced by HTML V Editor.
+- Use a `html-v` fenced block when plugin-managed preview and inline editing are desired.

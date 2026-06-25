@@ -239,48 +239,16 @@
 
 .html-v-code-block {
   overflow: hidden;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: var(--background-primary);
-}
-
-.html-v-code-block-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-}
-
-.html-v-code-block-title {
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.html-v-code-block-edit-button {
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  background: var(--interactive-normal);
-  color: var(--text-normal);
-  font-size: var(--font-ui-small);
-}
-
-.html-v-code-block-edit-button:hover {
-  background: var(--interactive-hover);
 }
 
 .html-v-code-block-preview {
   height: 260px;
   background: white;
+}
+
+.html-v-code-block.html-v-has-embed-height .html-v-code-block-preview {
+  height: 100%;
+  min-height: 0;
 }
 
 .html-v-block-edit-modal {

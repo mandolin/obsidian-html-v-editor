@@ -70,8 +70,8 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Live Preview HTML widgets")
-      .setDesc("Replace complete raw HTML blocks in Live Preview with clickable rendered previews when the cursor is outside the block.")
+      .setName("Live Preview html-v blocks")
+      .setDesc("Replace ```html-v fenced blocks in Live Preview with rendered previews and inline edit actions. Plain HTML blocks are left to Obsidian.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.livePreviewHtmlWidgets)
