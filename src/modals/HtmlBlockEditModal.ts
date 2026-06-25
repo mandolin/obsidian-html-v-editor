@@ -176,7 +176,7 @@ export class HtmlBlockEditModal {
     this.editor?.destroy();
     this.editor = null;
     this.containerEl?.remove();
-    cleanupHugeRteAuxiliaryUi();
+    cleanupHugeRteAuxiliaryUi({ onlyWhenNoActiveEditors: true });
     this.containerEl = null;
     this.modalEl = null;
     this.contentEl = null;

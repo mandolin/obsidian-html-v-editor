@@ -40,6 +40,44 @@ const HUGERTE_AUXILIARY_UI_SELECTOR = [
   ".tox-tooltip"
 ].join(",");
 
+const HUGERTE_FONT_SIZE_FORMATS = [
+  "8pt",
+  "9pt",
+  "10pt",
+  "11pt",
+  "12pt",
+  "14pt",
+  "15pt",
+  "16pt",
+  "18pt",
+  "20pt",
+  "24pt",
+  "28pt",
+  "32pt",
+  "36pt"
+].join(" ");
+
+const HUGERTE_FONT_FAMILY_FORMATS = [
+  "Arial=arial,helvetica,sans-serif",
+  "Courier New='courier new',courier,monospace",
+  "Georgia=georgia,palatino,serif",
+  "Times New Roman='times new roman',times,serif",
+  "Verdana=verdana,geneva,sans-serif",
+  "等距更纱黑体 SC='Sarasa Mono SC','等距更纱黑体 SC',monospace",
+  "等距更纱黑体 Slab SC='Sarasa Mono Slab SC','等距更纱黑体 Slab SC',monospace",
+  "宋体=SimSun,'宋体',serif",
+  "新宋体=NSimSun,'新宋体',serif",
+  "楷体=KaiTi,'楷体',serif",
+  "黑体=SimHei,'黑体',sans-serif",
+  "仿宋=FangSong,'仿宋',serif",
+  "隶书=LiSu,'隶书',serif",
+  "幼圆=YouYuan,'幼圆',sans-serif",
+  "微软雅黑='Microsoft YaHei','微软雅黑',sans-serif",
+  "霞鹜文楷等宽='LXGW WenKai Mono','霞鹜文楷等宽',monospace"
+].join("; ");
+
+const activeHugeRteEditors = new Set<Editor>();
+
 export class HugeRteAdapter implements HtmlEditorAdapter {
   readonly id = "hugerte";
   readonly displayName = "HugeRTE";
@@ -86,6 +124,8 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       content_style: HUGERTE_CONTENT_STYLE,
       custom_ui_selector: HUGERTE_AUXILIARY_UI_SELECTOR,
       contextmenu: "link image table",
+      font_size_formats: HUGERTE_FONT_SIZE_FORMATS,
+      font_family_formats: HUGERTE_FONT_FAMILY_FORMATS,
       plugins: "advlist autolink lists link image media table code fullscreen",
       toolbar: "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | removeformat code fullscreen",
       setup: (editor) => {
@@ -102,6 +142,9 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
     });
 
     this.editor = editors[0] ?? null;
+    if (this.editor) {
+      activeHugeRteEditors.add(this.editor);
+    }
   }
 
   getHtml(): string {
@@ -128,6 +171,7 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
     if (this.editor) {
       const editor = this.editor;
       this.editor = null;
+      activeHugeRteEditors.delete(editor);
       try {
         editor.remove();
       } catch (error) {
@@ -138,7 +182,7 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
           console.warn("Failed to destroy HugeRTE editor cleanly", destroyError);
         }
       }
-      if (!wasIsolatedFrame) {
+      if (!wasIsolatedFrame && activeHugeRteEditors.size === 0) {
         cleanupHugeRteAuxiliaryUi({ preserveOpenModal: true });
       }
     }
@@ -189,9 +233,14 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
 
 interface CleanupHugeRteAuxiliaryUiOptions {
   preserveOpenModal?: boolean;
+  onlyWhenNoActiveEditors?: boolean;
 }
 
 export function cleanupHugeRteAuxiliaryUi(options: CleanupHugeRteAuxiliaryUiOptions = {}): void {
+  if (options.onlyWhenNoActiveEditors && activeHugeRteEditors.size > 0) {
+    return;
+  }
+
   if (options.preserveOpenModal && document.querySelector(".html-v-block-edit-modal-container")) {
     return;
   }
