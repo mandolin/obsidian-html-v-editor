@@ -623,6 +623,7 @@ class InlineHtmlEditor {
     if (target instanceof Element) {
       return Boolean(target.closest([
         ".html-v-live-widget.is-editing",
+        ".html-v-block-edit-modal-container",
         ".tox-hugerte-aux",
         ".tox-tinymce-aux",
         ".tox-silver-sink",

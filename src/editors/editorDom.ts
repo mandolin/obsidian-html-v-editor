@@ -14,6 +14,12 @@ export function stopObsidianContextMenu(el: HTMLElement | Document): void {
   });
 }
 
+export function stopObsidianContextMenuBubble(el: HTMLElement | Document): void {
+  el.addEventListener("contextmenu", (event) => {
+    event.stopPropagation();
+  });
+}
+
 export function stopObsidianMouseBubble(el: HTMLElement): void {
   for (const type of WIDGET_MOUSE_EVENTS) {
     el.addEventListener(type, (event) => {

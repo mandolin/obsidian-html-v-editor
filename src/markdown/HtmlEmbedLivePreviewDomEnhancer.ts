@@ -37,6 +37,7 @@ export class HtmlEmbedLivePreviewDomEnhancer {
       this.activeController.containsEventTarget(event.target)
       || isHugeRteAuxiliaryTarget(event.target)
       || isHtmlVInlineEditorTarget(event.target)
+      || isHtmlVEditorModalTarget(event.target)
     ) {
       return;
     }
@@ -150,7 +151,7 @@ export class HtmlEmbedLivePreviewDomEnhancer {
 
     const active = this.getCurrentCursorEmbed();
     if (!active) {
-      if (this.activeController && !this.activeController.containsFocus()) {
+      if (this.activeController && !this.activeController.containsFocus() && !isHtmlVEditorModalOpen()) {
         void this.closeActiveController();
       }
       return;
@@ -169,7 +170,7 @@ export class HtmlEmbedLivePreviewDomEnhancer {
       }
     }
 
-    if (this.activeController && !this.activeController.containsFocus()) {
+    if (this.activeController && !this.activeController.containsFocus() && !isHtmlVEditorModalOpen()) {
       void this.closeActiveController();
     }
   }
@@ -655,6 +656,15 @@ function isHugeRteAuxiliaryTarget(target: EventTarget | null): boolean {
 function isHtmlVInlineEditorTarget(target: EventTarget | null): boolean {
   return target instanceof Element
     && Boolean(target.closest(".html-v-live-widget.is-editing"));
+}
+
+function isHtmlVEditorModalTarget(target: EventTarget | null): boolean {
+  return target instanceof Element
+    && Boolean(target.closest(".html-v-block-edit-modal-container"));
+}
+
+function isHtmlVEditorModalOpen(): boolean {
+  return Boolean(document.querySelector(".html-v-block-edit-modal-container"));
 }
 
 function createIconButton(parent: HTMLElement, icon: string, label: string): HTMLButtonElement {

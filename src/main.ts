@@ -61,9 +61,6 @@ export default class HtmlVEditorPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
       this.addHtmlFileMenuItem(menu, file, source, leaf);
     }));
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
-      cleanupHugeRteAuxiliaryUi();
-    }));
     this.addCommand({
       id: "edit-selected-html",
       name: "Edit selected HTML with HTML V Editor",

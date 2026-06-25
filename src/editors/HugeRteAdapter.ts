@@ -13,7 +13,7 @@ import "hugerte/plugins/table";
 import "hugerte/themes/silver";
 
 import type { EditorOptions, HtmlEditorAdapter } from "./HtmlEditorAdapter";
-import { stopObsidianContextMenu } from "./editorDom";
+import { stopObsidianContextMenuBubble } from "./editorDom";
 
 const HUGERTE_CONTENT_STYLE = [
   "body{font-family:var(--font-text,Arial,sans-serif);font-size:16px;line-height:1.5;margin:12px;}",
@@ -30,21 +30,37 @@ const HUGERTE_CONTENT_STYLE = [
   "body.html-v-table-resizing-rows,body.html-v-table-resizing-rows *{cursor:row-resize!important;}"
 ].join(" ");
 
+const HUGERTE_AUXILIARY_UI_SELECTOR = [
+  ".tox-hugerte-aux",
+  ".tox-tinymce-aux",
+  ".tox-silver-sink",
+  ".tox-dialog-wrap",
+  ".tox-pop",
+  ".tox-menu",
+  ".tox-tooltip"
+].join(",");
+
 export class HugeRteAdapter implements HtmlEditorAdapter {
   readonly id = "hugerte";
   readonly displayName = "HugeRTE";
 
   private editor: Editor | null = null;
   private target: HTMLTextAreaElement | null = null;
+  private frame: HTMLIFrameElement | null = null;
+  private isIsolatedFrame = false;
 
   async mount(container: HTMLElement, html: string, options: EditorOptions): Promise<void> {
     this.destroy();
 
     container.empty();
-    stopObsidianContextMenu(container);
-    this.target = container.createEl("textarea", {
-      cls: "html-v-editor-hugerte-target"
-    });
+    stopObsidianContextMenuBubble(container);
+    this.isIsolatedFrame = Boolean(options.isolateUiInFrame);
+    const targetHost = options.isolateUiInFrame
+      ? this.createIsolatedFrame(container)
+      : container;
+    this.target = targetHost.ownerDocument.createElement("textarea");
+    this.target.className = "html-v-editor-hugerte-target";
+    targetHost.appendChild(this.target);
     this.target.value = html;
 
     const editors = await hugerte.init({
@@ -57,8 +73,8 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       statusbar: true,
       resize: false,
       height: "100%",
-      skin: false,
-      content_css: false,
+      skin: options.isolateUiInFrame ? "oxide" : false,
+      content_css: options.isolateUiInFrame ? "default" : false,
       object_resizing: "table",
       table_grid: true,
       table_resize_bars: true,
@@ -68,6 +84,8 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
         resize: false
       },
       content_style: HUGERTE_CONTENT_STYLE,
+      custom_ui_selector: HUGERTE_AUXILIARY_UI_SELECTOR,
+      contextmenu: "link image table",
       plugins: "advlist autolink lists link image media table code fullscreen",
       toolbar: "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | removeformat code fullscreen",
       setup: (editor) => {
@@ -76,7 +94,7 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
         };
         editor.on("Change Input Undo Redo", emitChange);
         editor.on("init", () => {
-          stopObsidianContextMenu(editor.getDoc());
+          stopObsidianContextMenuBubble(editor.getDoc());
           installTableResizeCursor(editor);
           installTableDragSelection(editor);
         });
@@ -104,17 +122,80 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
   }
 
   destroy(): void {
+    const wasIsolatedFrame = this.isIsolatedFrame;
+    this.isIsolatedFrame = false;
+
     if (this.editor) {
-      cleanupHugeRteAuxiliaryUi();
-      this.editor.remove();
-      cleanupHugeRteAuxiliaryUi();
+      const editor = this.editor;
       this.editor = null;
+      try {
+        editor.remove();
+      } catch (error) {
+        console.warn("Failed to remove HugeRTE editor cleanly", error);
+        try {
+          editor.destroy(false);
+        } catch (destroyError) {
+          console.warn("Failed to destroy HugeRTE editor cleanly", destroyError);
+        }
+      }
+      if (!wasIsolatedFrame) {
+        cleanupHugeRteAuxiliaryUi({ preserveOpenModal: true });
+      }
     }
+    this.frame?.remove();
+    this.frame = null;
     this.target = null;
+  }
+
+  private createIsolatedFrame(container: HTMLElement): HTMLElement {
+    const frame = container.ownerDocument.createElement("iframe");
+    frame.className = "html-v-editor-hugerte-frame";
+    frame.setAttribute("title", "HugeRTE editor");
+    container.appendChild(frame);
+    this.frame = frame;
+
+    const doc = frame.contentDocument;
+    if (!doc) {
+      throw new Error("Unable to create isolated HugeRTE frame.");
+    }
+
+    doc.open();
+    doc.write([
+      "<!doctype html>",
+      "<html>",
+      "<head>",
+      "<meta charset=\"utf-8\">",
+      "<style>",
+      "html,body,#html-v-hugerte-frame-host{height:100%;margin:0;overflow:hidden;background:#fff;}",
+      "body{font-family:Arial,sans-serif;}",
+      "#html-v-hugerte-frame-host{display:flex;flex-direction:column;}",
+      "</style>",
+      "</head>",
+      "<body>",
+      "<div id=\"html-v-hugerte-frame-host\"></div>",
+      "</body>",
+      "</html>"
+    ].join(""));
+    doc.close();
+
+    const host = doc.getElementById("html-v-hugerte-frame-host");
+    if (!host) {
+      throw new Error("Unable to initialize isolated HugeRTE frame.");
+    }
+
+    return host;
   }
 }
 
-export function cleanupHugeRteAuxiliaryUi(): void {
+interface CleanupHugeRteAuxiliaryUiOptions {
+  preserveOpenModal?: boolean;
+}
+
+export function cleanupHugeRteAuxiliaryUi(options: CleanupHugeRteAuxiliaryUiOptions = {}): void {
+  if (options.preserveOpenModal && document.querySelector(".html-v-block-edit-modal-container")) {
+    return;
+  }
+
   document.querySelectorAll<HTMLElement>([
     ".tox-hugerte-aux",
     ".tox-tinymce-aux",
