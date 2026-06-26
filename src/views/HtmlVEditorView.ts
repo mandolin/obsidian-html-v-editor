@@ -9,6 +9,7 @@ import {
 } from "../editors/HtmlEditorRegistry";
 import type { HtmlEditorAdapter, HtmlEditorId } from "../editors/HtmlEditorAdapter";
 import { protectObsidianButton } from "../editors/editorDom";
+import { getEditorDocumentBaseUrl, rewriteHtmlResourceUrls } from "../editors/editorResources";
 import { HtmlPreviewRenderer } from "../render/HtmlPreviewRenderer";
 import { renderHtmlForPreview } from "../security/HtmlSecurityPolicy";
 import type { HtmlVEditorSettings } from "../settings/settings";
@@ -222,8 +223,9 @@ export class HtmlVEditorView extends TextFileView {
         }
 
         const preview = renderHtmlForPreview(this.html, settings);
-        this.previewRenderer.render(this.editorContainerEl, preview.html, {
-          sandbox: preview.sandbox
+        this.previewRenderer.render(this.editorContainerEl, rewriteHtmlResourceUrls(this.app, sourcePath, preview.html), {
+          sandbox: preview.sandbox,
+          documentBaseUrl: getEditorDocumentBaseUrl(this.app, sourcePath)
         });
       });
       return;
@@ -244,6 +246,7 @@ export class HtmlVEditorView extends TextFileView {
 
     adapter.mount(editorHost, this.html, {
       assetsBaseUrl: this.assetsBaseUrl,
+      documentBaseUrl: getEditorDocumentBaseUrl(this.app, this.file?.path),
       sourceEditorMode: this.selectedSourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -270,6 +273,7 @@ export class HtmlVEditorView extends TextFileView {
 
     adapter.mount(editorHost, this.html, {
       assetsBaseUrl: this.assetsBaseUrl,
+      documentBaseUrl: getEditorDocumentBaseUrl(this.app, this.file?.path),
       sourceEditorMode: this.selectedSourceEditorMode,
       onChange: (html) => {
         this.html = html;

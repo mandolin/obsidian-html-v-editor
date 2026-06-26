@@ -168,7 +168,9 @@ function buildSandbox(settings: HtmlVEditorSettings): string {
 
   if (settings.allowScriptsInSandbox) {
     tokens.add("allow-scripts");
-  } else if (settings.allowSameOriginInSandbox) {
+  }
+
+  if (settings.allowSameOriginInSandbox || settings.allowScriptsInSandbox) {
     tokens.add("allow-same-origin");
   }
 
@@ -193,9 +195,8 @@ function buildTrustedSandbox(settings: HtmlVEditorSettings): string {
 
   if (settings.trustedAllowScripts) {
     tokens.add("allow-scripts");
-  } else {
-    tokens.add("allow-same-origin");
   }
+  tokens.add("allow-same-origin");
 
   return Array.from(tokens).join(" ");
 }

@@ -12,6 +12,7 @@ import {
 import type { HtmlEditorAdapter } from "../editors/HtmlEditorAdapter";
 import type { HtmlEditorId } from "../editors/HtmlEditorAdapter";
 import { isolateObsidianControl, protectObsidianButton, stopObsidianMouseBubble } from "../editors/editorDom";
+import { getEditorDocumentBaseUrl, rewriteHtmlResourceUrls } from "../editors/editorResources";
 import { HtmlBlockEditModal } from "../modals/HtmlBlockEditModal";
 import { HtmlPreviewRenderer } from "../render/HtmlPreviewRenderer";
 import { renderHtmlForPreview } from "../security/HtmlSecurityPolicy";
@@ -304,8 +305,9 @@ class HtmlPreviewWidget extends WidgetType {
       const previewSettings = await this.options.getPreviewSettings(this.getPreviewSourcePath(), html);
       const preview = renderHtmlForPreview(html, previewSettings);
       const renderer = new HtmlPreviewRenderer();
-      renderer.render(previewEl, preview.html, {
-        sandbox: preview.sandbox
+      renderer.render(previewEl, rewriteHtmlResourceUrls(this.options.app, this.getPreviewSourcePath(), preview.html), {
+        sandbox: preview.sandbox,
+        documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getPreviewSourcePath())
       });
     } catch (error) {
       console.error("Failed to render live preview HTML widget", error);
@@ -325,6 +327,7 @@ class HtmlPreviewWidget extends WidgetType {
         initialHtml: html,
         defaultEditorId: this.options.editorId,
         assetsBaseUrl: this.options.assetsBaseUrl,
+        documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getPreviewSourcePath()),
         sourceEditorMode: this.options.getSettings().defaultSourceEditorMode,
         onSave: async (nextHtml) => {
           if (this.options.range.type === "embed") {
@@ -681,6 +684,7 @@ class InlineHtmlEditor {
     this.editor = editor;
     await editor.mount(this.editorHostEl, this.html, {
       assetsBaseUrl: this.options.assetsBaseUrl,
+      documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getEditorSourcePath()),
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -731,6 +735,7 @@ class InlineHtmlEditor {
       initialHtml: this.html,
       defaultEditorId: this.editorId,
       assetsBaseUrl: this.options.assetsBaseUrl,
+      documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getEditorSourcePath()),
       sourceEditorMode: this.sourceEditorMode,
       onSave: async (nextHtml) => {
         this.html = nextHtml;
@@ -840,6 +845,14 @@ class InlineHtmlEditor {
   private resolveEmbeddedFileFromSpec(spec: Pick<HtmlEmbedSpec, "linktext">): TFile | null {
     const file = this.options.app.metadataCache.getFirstLinkpathDest(spec.linktext, this.options.sourcePath);
     return file instanceof TFile ? file : null;
+  }
+
+  private getEditorSourcePath(): string {
+    if (this.options.range.type === "embed") {
+      return this.resolveEmbeddedFile()?.path ?? this.options.sourcePath;
+    }
+
+    return this.options.sourcePath;
   }
 }
 

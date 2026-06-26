@@ -16,6 +16,7 @@ export interface HtmlBlockEditModalOptions {
   defaultEditorId?: HtmlEditorId;
   initialHtml: string;
   assetsBaseUrl: string;
+  documentBaseUrl?: string;
   sourceEditorMode?: SourceEditorMode;
   onSave: (html: string) => Promise<void>;
 }
@@ -190,6 +191,7 @@ export class HtmlBlockEditModal {
 
     editor.mount(this.editorHostEl, this.html, {
       assetsBaseUrl: this.options.assetsBaseUrl,
+      documentBaseUrl: this.options.documentBaseUrl,
       isolateUiInFrame: false,
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {

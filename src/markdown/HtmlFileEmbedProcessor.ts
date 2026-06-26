@@ -4,6 +4,7 @@ import { HTML_FILE_EXTENSIONS } from "../constants";
 import { HtmlPreviewRenderer } from "../render/HtmlPreviewRenderer";
 import { renderHtmlForPreview } from "../security/HtmlSecurityPolicy";
 import type { HtmlVEditorSettings } from "../settings/settings";
+import { getEditorDocumentBaseUrl, rewriteHtmlResourceUrls } from "../editors/editorResources";
 import { applyEmbedDimensions, parseHtmlEmbedText, type HtmlEmbedSpec } from "./HtmlEmbedParser";
 
 export interface HtmlFileEmbedProcessorOptions {
@@ -151,8 +152,9 @@ class HtmlFileEmbedRenderChild extends MarkdownRenderChild {
       const html = await this.options.app.vault.cachedRead(this.options.file);
       const settings = await this.options.getPreviewSettings(this.options.file.path, html);
       const preview = renderHtmlForPreview(html, settings);
-      this.renderer.render(this.previewEl, preview.html, {
-        sandbox: preview.sandbox
+      this.renderer.render(this.previewEl, rewriteHtmlResourceUrls(this.options.app, this.options.file.path, preview.html), {
+        sandbox: preview.sandbox,
+        documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path)
       });
     } catch (error) {
       console.error("Failed to render HTML file embed", error);

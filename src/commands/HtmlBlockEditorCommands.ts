@@ -1,6 +1,7 @@
 import { Notice, type App, type Editor } from "obsidian";
 
 import type { HtmlEditorId } from "../editors/HtmlEditorAdapter";
+import { getEditorDocumentBaseUrl } from "../editors/editorResources";
 import { HtmlBlockEditModal } from "../modals/HtmlBlockEditModal";
 import { findHtmlBlockAtCursor } from "../markdown/HtmlBlockRange";
 import type { SourceEditorMode } from "../settings/settings";
@@ -24,6 +25,7 @@ export function editSelectedHtml(editor: Editor, options: HtmlBlockEditorCommand
     initialHtml: selected,
     defaultEditorId: options.defaultEditorId,
     assetsBaseUrl: options.assetsBaseUrl,
+    documentBaseUrl: getEditorDocumentBaseUrl(options.app, options.app.workspace.getActiveFile()?.path),
     sourceEditorMode: options.sourceEditorMode,
     onSave: async (nextHtml) => {
       editor.replaceSelection(normalizeHtml(nextHtml), "html-v-editor");
@@ -45,6 +47,7 @@ export function editHtmlBlockAtCursor(editor: Editor, options: HtmlBlockEditorCo
     initialHtml: range.html,
     defaultEditorId: options.defaultEditorId,
     assetsBaseUrl: options.assetsBaseUrl,
+    documentBaseUrl: getEditorDocumentBaseUrl(options.app, options.app.workspace.getActiveFile()?.path),
     sourceEditorMode: options.sourceEditorMode,
     onSave: async (nextHtml) => {
       const replacement = normalizeHtml(nextHtml);

@@ -4,6 +4,7 @@ import { applyEmbedDimensions, parseEmbedDimensions, type HtmlEmbedSpec } from "
 import { HtmlPreviewRenderer } from "../render/HtmlPreviewRenderer";
 import { renderHtmlForPreview } from "../security/HtmlSecurityPolicy";
 import type { HtmlVEditorSettings } from "../settings/settings";
+import { getEditorDocumentBaseUrl, rewriteHtmlResourceUrls } from "../editors/editorResources";
 
 export interface HtmlVCodeBlockProcessorOptions {
   app: App;
@@ -22,8 +23,9 @@ export class HtmlVCodeBlockProcessor {
     const renderer = new HtmlPreviewRenderer();
     void this.options.getPreviewSettings(ctx.sourcePath, source).then((settings) => {
       const preview = renderHtmlForPreview(source, settings);
-      renderer.render(previewEl, preview.html, {
-        sandbox: preview.sandbox
+      renderer.render(previewEl, rewriteHtmlResourceUrls(this.options.app, ctx.sourcePath, preview.html), {
+        sandbox: preview.sandbox,
+        documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, ctx.sourcePath)
       });
     });
 

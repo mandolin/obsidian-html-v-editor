@@ -111,6 +111,8 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       statusbar: true,
       resize: false,
       height: "100%",
+      convert_urls: false,
+      document_base_url: options.documentBaseUrl,
       skin: options.isolateUiInFrame ? "oxide" : false,
       content_css: options.isolateUiInFrame ? "default" : false,
       object_resizing: "table",

@@ -9,6 +9,7 @@ import {
 } from "../editors/HtmlEditorRegistry";
 import type { HtmlEditorAdapter, HtmlEditorId } from "../editors/HtmlEditorAdapter";
 import { isolateObsidianControl, protectObsidianButton, stopObsidianMouseBubble } from "../editors/editorDom";
+import { getEditorDocumentBaseUrl, rewriteHtmlResourceUrls } from "../editors/editorResources";
 import { HtmlBlockEditModal } from "../modals/HtmlBlockEditModal";
 import { HtmlPreviewRenderer } from "../render/HtmlPreviewRenderer";
 import { renderHtmlForPreview } from "../security/HtmlSecurityPolicy";
@@ -246,8 +247,9 @@ class HtmlLivePreviewEmbedController {
       this.html = await this.options.app.vault.cachedRead(this.options.file);
       const settings = await this.options.getPreviewSettings(this.options.file.path, this.html);
       const preview = renderHtmlForPreview(this.html, settings);
-      this.renderer.render(previewEl, preview.html, {
-        sandbox: preview.sandbox
+      this.renderer.render(previewEl, rewriteHtmlResourceUrls(this.options.app, this.options.file.path, preview.html), {
+        sandbox: preview.sandbox,
+        documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path)
       });
       const abort = new AbortController();
       this.previewAbort = abort;
@@ -439,6 +441,7 @@ class HtmlLivePreviewEmbedController {
     this.editor = editor;
     await editor.mount(hostEl, this.html, {
       assetsBaseUrl: this.options.assetsBaseUrl,
+      documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path),
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -462,6 +465,7 @@ class HtmlLivePreviewEmbedController {
       initialHtml: this.html,
       defaultEditorId: this.editorId,
       assetsBaseUrl: this.options.assetsBaseUrl,
+      documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path),
       sourceEditorMode: this.sourceEditorMode,
       onSave: async (nextHtml) => {
         this.html = nextHtml;
