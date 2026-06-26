@@ -3,6 +3,7 @@ import type { SourceEditorMode } from "../settings/settings";
 export interface EditorOptions {
   assetsBaseUrl: string;
   documentBaseUrl?: string;
+  characterMap?: [number, string][];
   isolateUiInFrame?: boolean;
   sourceEditorMode?: SourceEditorMode;
   onChange?: (html: string) => void;

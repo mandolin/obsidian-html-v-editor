@@ -9,6 +9,7 @@ import {
   HTML_ACTIVE_RICH_EDITOR_DEFINITIONS,
   isRichHtmlEditorId
 } from "../editors/HtmlEditorRegistry";
+import { buildHugeRteCharacterMap } from "../editors/HugeRteCharacterMap";
 import type { HtmlEditorAdapter } from "../editors/HtmlEditorAdapter";
 import type { HtmlEditorId } from "../editors/HtmlEditorAdapter";
 import { isolateObsidianControl, protectObsidianButton, stopObsidianMouseBubble } from "../editors/editorDom";
@@ -328,6 +329,7 @@ class HtmlPreviewWidget extends WidgetType {
         defaultEditorId: this.options.editorId,
         assetsBaseUrl: this.options.assetsBaseUrl,
         documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getPreviewSourcePath()),
+        characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
         sourceEditorMode: this.options.getSettings().defaultSourceEditorMode,
         onSave: async (nextHtml) => {
           if (this.options.range.type === "embed") {
@@ -685,6 +687,7 @@ class InlineHtmlEditor {
     await editor.mount(this.editorHostEl, this.html, {
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getEditorSourcePath()),
+      characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -736,6 +739,7 @@ class InlineHtmlEditor {
       defaultEditorId: this.editorId,
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getEditorSourcePath()),
+      characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
       sourceEditorMode: this.sourceEditorMode,
       onSave: async (nextHtml) => {
         this.html = nextHtml;

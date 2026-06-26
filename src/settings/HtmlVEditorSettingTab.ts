@@ -5,6 +5,13 @@ import {
   HTML_ACTIVE_RICH_EDITOR_DEFINITIONS,
   isRichHtmlEditorId
 } from "../editors/HtmlEditorRegistry";
+import {
+  CHARACTER_MAP_GROUPS,
+  normalizeCharacterMapGroups,
+  normalizeCustomCharacters,
+  type CharacterMapGroupId,
+  type CustomCharacterMapEntry
+} from "../editors/HugeRteCharacterMap";
 import type HtmlVEditorPlugin from "../main";
 import type { HtmlPreviewSecurityLevel } from "./settings";
 
@@ -49,6 +56,61 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
             if (value === "codemirror" || value === "textarea") {
               this.plugin.settings.defaultSourceEditorMode = value;
               await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Special character button")
+      .setDesc("Show HugeRTE's Special character dialog in the toolbar.")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.enableCharacterMap)
+          .onChange(async (value) => {
+            this.plugin.settings.enableCharacterMap = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    containerEl.createEl("h3", { text: "Special character groups" });
+    for (const group of CHARACTER_MAP_GROUPS) {
+      new Setting(containerEl)
+        .setName(group.name)
+        .setDesc(group.characters.map((entry) => entry.char).join(" "))
+        .addToggle((toggle) => {
+          toggle
+            .setValue(this.plugin.settings.characterMapGroups.includes(group.id))
+            .onChange(async (value) => {
+              const groups = new Set<CharacterMapGroupId>(this.plugin.settings.characterMapGroups);
+              if (value) {
+                groups.add(group.id);
+              } else {
+                groups.delete(group.id);
+              }
+              this.plugin.settings.characterMapGroups = normalizeCharacterMapGroups(Array.from(groups));
+              await this.plugin.saveSettings();
+              this.display();
+            });
+        });
+    }
+
+    new Setting(containerEl)
+      .setName("Custom special characters")
+      .setDesc("JSON array. Example: [{\"char\":\"☕\",\"name\":\"Coffee\"}].")
+      .addTextArea((text) => {
+        text.inputEl.rows = 5;
+        text.inputEl.cols = 40;
+        text
+          .setValue(JSON.stringify(this.plugin.settings.customCharacterMap ?? [], null, 2))
+          .onChange(async (value) => {
+            try {
+              const parsed = JSON.parse(value) as CustomCharacterMapEntry[];
+              if (Array.isArray(parsed)) {
+                this.plugin.settings.customCharacterMap = normalizeCustomCharacters(parsed);
+                await this.plugin.saveSettings();
+              }
+            } catch {
+              // Keep the previous valid value while the user is editing.
             }
           });
       });

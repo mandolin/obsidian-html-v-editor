@@ -1,4 +1,5 @@
 import type { HtmlEditorId } from "../editors/HtmlEditorAdapter";
+import type { CharacterMapGroupId, CustomCharacterMapEntry } from "../editors/HugeRteCharacterMap";
 
 export type HtmlPreviewSecurityLevel = "safe" | "sandbox" | "trusted";
 export type SourceEditorMode = "textarea" | "codemirror";
@@ -19,6 +20,9 @@ export interface HtmlVEditorSettings {
   allowPopupsInSandbox: boolean;
   safeAllowRemoteImages: boolean;
   trustedAllowScripts: boolean;
+  enableCharacterMap: boolean;
+  characterMapGroups: CharacterMapGroupId[];
+  customCharacterMap: CustomCharacterMapEntry[];
 }
 
 export type HtmlTrustScope = "file" | "folder" | "source";
@@ -43,5 +47,8 @@ export const DEFAULT_SETTINGS: HtmlVEditorSettings = {
   allowFormsInSandbox: false,
   allowPopupsInSandbox: true,
   safeAllowRemoteImages: false,
-  trustedAllowScripts: false
+  trustedAllowScripts: false,
+  enableCharacterMap: true,
+  characterMapGroups: ["common", "arrows", "boxDrawing", "shapes", "math"],
+  customCharacterMap: []
 };

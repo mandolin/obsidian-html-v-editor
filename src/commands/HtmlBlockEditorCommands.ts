@@ -1,16 +1,18 @@
 import { Notice, type App, type Editor } from "obsidian";
 
 import type { HtmlEditorId } from "../editors/HtmlEditorAdapter";
+import { buildHugeRteCharacterMap } from "../editors/HugeRteCharacterMap";
 import { getEditorDocumentBaseUrl } from "../editors/editorResources";
 import { HtmlBlockEditModal } from "../modals/HtmlBlockEditModal";
 import { findHtmlBlockAtCursor } from "../markdown/HtmlBlockRange";
-import type { SourceEditorMode } from "../settings/settings";
+import type { HtmlVEditorSettings, SourceEditorMode } from "../settings/settings";
 
 export interface HtmlBlockEditorCommandOptions {
   app: App;
   assetsBaseUrl: string;
   defaultEditorId: HtmlEditorId;
   sourceEditorMode: SourceEditorMode;
+  getSettings: () => HtmlVEditorSettings;
 }
 
 export function editSelectedHtml(editor: Editor, options: HtmlBlockEditorCommandOptions): void {
@@ -26,6 +28,7 @@ export function editSelectedHtml(editor: Editor, options: HtmlBlockEditorCommand
     defaultEditorId: options.defaultEditorId,
     assetsBaseUrl: options.assetsBaseUrl,
     documentBaseUrl: getEditorDocumentBaseUrl(options.app, options.app.workspace.getActiveFile()?.path),
+    characterMap: buildHugeRteCharacterMap(options.getSettings()),
     sourceEditorMode: options.sourceEditorMode,
     onSave: async (nextHtml) => {
       editor.replaceSelection(normalizeHtml(nextHtml), "html-v-editor");
@@ -48,6 +51,7 @@ export function editHtmlBlockAtCursor(editor: Editor, options: HtmlBlockEditorCo
     defaultEditorId: options.defaultEditorId,
     assetsBaseUrl: options.assetsBaseUrl,
     documentBaseUrl: getEditorDocumentBaseUrl(options.app, options.app.workspace.getActiveFile()?.path),
+    characterMap: buildHugeRteCharacterMap(options.getSettings()),
     sourceEditorMode: options.sourceEditorMode,
     onSave: async (nextHtml) => {
       const replacement = normalizeHtml(nextHtml);

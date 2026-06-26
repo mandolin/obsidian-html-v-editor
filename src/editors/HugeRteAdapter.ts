@@ -3,6 +3,7 @@ import "hugerte/icons/default";
 import "hugerte/models/dom";
 import "hugerte/plugins/advlist";
 import "hugerte/plugins/autolink";
+import "hugerte/plugins/charmap";
 import "hugerte/plugins/code";
 import "hugerte/plugins/fullscreen";
 import "hugerte/plugins/image";
@@ -128,8 +129,16 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       contextmenu: "link image table",
       font_size_formats: HUGERTE_FONT_SIZE_FORMATS,
       font_family_formats: HUGERTE_FONT_FAMILY_FORMATS,
-      plugins: "advlist autolink lists link image media table code fullscreen",
-      toolbar: "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | removeformat code fullscreen",
+      charmap: options.characterMap,
+      plugins: [
+        "advlist autolink lists link image media table code fullscreen",
+        options.characterMap ? "charmap" : ""
+      ].filter(Boolean).join(" "),
+      toolbar: [
+        "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table",
+        options.characterMap ? "charmap" : "",
+        "| removeformat code fullscreen"
+      ].filter(Boolean).join(" "),
       setup: (editor) => {
         const emitChange = () => {
           options.onChange?.(editor.getContent());

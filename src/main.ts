@@ -2,6 +2,7 @@ import { Menu, Notice, Plugin, TAbstractFile, TFile, normalizePath, type Workspa
 
 import { editHtmlBlockAtCursor, editSelectedHtml } from "./commands/HtmlBlockEditorCommands";
 import { HTML_FILE_EXTENSIONS, HTML_V_EDITOR_VIEW_TYPE } from "./constants";
+import { normalizeCharacterMapGroups, normalizeCustomCharacters } from "./editors/HugeRteCharacterMap";
 import { cleanupHugeRteAuxiliaryUi } from "./editors/HugeRteAdapter";
 import { HtmlFileEmbedProcessor } from "./markdown/HtmlFileEmbedProcessor";
 import { HtmlVCodeBlockProcessor } from "./markdown/HtmlVCodeBlockProcessor";
@@ -69,7 +70,8 @@ export default class HtmlVEditorPlugin extends Plugin {
           app: this.app,
           assetsBaseUrl,
           defaultEditorId: this.settings.defaultEditor,
-          sourceEditorMode: this.settings.defaultSourceEditorMode
+          sourceEditorMode: this.settings.defaultSourceEditorMode,
+          getSettings: () => this.settings
         });
       }
     });
@@ -81,7 +83,8 @@ export default class HtmlVEditorPlugin extends Plugin {
           app: this.app,
           assetsBaseUrl,
           defaultEditorId: this.settings.defaultEditor,
-          sourceEditorMode: this.settings.defaultSourceEditorMode
+          sourceEditorMode: this.settings.defaultSourceEditorMode,
+          getSettings: () => this.settings
         });
       }
     });
@@ -99,6 +102,8 @@ export default class HtmlVEditorPlugin extends Plugin {
       ...DEFAULT_SETTINGS,
       ...(await this.loadData())
     };
+    this.settings.characterMapGroups = normalizeCharacterMapGroups(this.settings.characterMapGroups);
+    this.settings.customCharacterMap = normalizeCustomCharacters(this.settings.customCharacterMap);
   }
 
   async saveSettings(): Promise<void> {

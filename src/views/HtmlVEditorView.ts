@@ -7,6 +7,7 @@ import {
   HTML_ACTIVE_RICH_EDITOR_DEFINITIONS,
   isRichHtmlEditorId
 } from "../editors/HtmlEditorRegistry";
+import { buildHugeRteCharacterMap } from "../editors/HugeRteCharacterMap";
 import type { HtmlEditorAdapter, HtmlEditorId } from "../editors/HtmlEditorAdapter";
 import { protectObsidianButton } from "../editors/editorDom";
 import { getEditorDocumentBaseUrl, rewriteHtmlResourceUrls } from "../editors/editorResources";
@@ -247,6 +248,7 @@ export class HtmlVEditorView extends TextFileView {
     adapter.mount(editorHost, this.html, {
       assetsBaseUrl: this.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.app, this.file?.path),
+      characterMap: buildHugeRteCharacterMap(this.getSettings()),
       sourceEditorMode: this.selectedSourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -274,6 +276,7 @@ export class HtmlVEditorView extends TextFileView {
     adapter.mount(editorHost, this.html, {
       assetsBaseUrl: this.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.app, this.file?.path),
+      characterMap: buildHugeRteCharacterMap(this.getSettings()),
       sourceEditorMode: this.selectedSourceEditorMode,
       onChange: (html) => {
         this.html = html;

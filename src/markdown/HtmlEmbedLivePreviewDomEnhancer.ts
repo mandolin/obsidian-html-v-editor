@@ -7,6 +7,7 @@ import {
   HTML_ACTIVE_RICH_EDITOR_DEFINITIONS,
   isRichHtmlEditorId
 } from "../editors/HtmlEditorRegistry";
+import { buildHugeRteCharacterMap } from "../editors/HugeRteCharacterMap";
 import type { HtmlEditorAdapter, HtmlEditorId } from "../editors/HtmlEditorAdapter";
 import { isolateObsidianControl, protectObsidianButton, stopObsidianMouseBubble } from "../editors/editorDom";
 import { getEditorDocumentBaseUrl, rewriteHtmlResourceUrls } from "../editors/editorResources";
@@ -442,6 +443,7 @@ class HtmlLivePreviewEmbedController {
     await editor.mount(hostEl, this.html, {
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path),
+      characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -466,6 +468,7 @@ class HtmlLivePreviewEmbedController {
       defaultEditorId: this.editorId,
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path),
+      characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
       sourceEditorMode: this.sourceEditorMode,
       onSave: async (nextHtml) => {
         this.html = nextHtml;
