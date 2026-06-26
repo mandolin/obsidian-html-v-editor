@@ -56,6 +56,7 @@ const SAFE_ALLOWED_ATTR = [
   "alt",
   "class",
   "colspan",
+  "data-checked",
   "height",
   "href",
   "id",

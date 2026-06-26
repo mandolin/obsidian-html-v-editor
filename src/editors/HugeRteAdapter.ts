@@ -14,6 +14,7 @@ import "hugerte/plugins/table";
 import "hugerte/themes/silver";
 
 import type { EditorOptions, HtmlEditorAdapter } from "./HtmlEditorAdapter";
+import { HUGERTE_CHECKLIST_CONTENT_STYLE, registerHugeRteChecklistPlugin } from "./HugeRteChecklistPlugin";
 import { stopObsidianContextMenuBubble } from "./editorDom";
 
 const HUGERTE_CONTENT_STYLE = [
@@ -28,7 +29,8 @@ const HUGERTE_CONTENT_STYLE = [
   ".ephox-snooker-resizer-rows{cursor:row-resize!important;}",
   ".ephox-snooker-resizer-bar.ephox-snooker-resizer-bar-dragging{opacity:.85!important;}",
   "body.html-v-table-resizing-cols,body.html-v-table-resizing-cols *{cursor:col-resize!important;}",
-  "body.html-v-table-resizing-rows,body.html-v-table-resizing-rows *{cursor:row-resize!important;}"
+  "body.html-v-table-resizing-rows,body.html-v-table-resizing-rows *{cursor:row-resize!important;}",
+  HUGERTE_CHECKLIST_CONTENT_STYLE
 ].join(" ");
 
 const HUGERTE_AUXILIARY_UI_SELECTOR = [
@@ -101,6 +103,7 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
     this.target.className = "html-v-editor-hugerte-target";
     targetHost.appendChild(this.target);
     this.target.value = html;
+    registerHugeRteChecklistPlugin();
 
     const editors = await hugerte.init({
       target: this.target,
@@ -131,11 +134,11 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       font_family_formats: HUGERTE_FONT_FAMILY_FORMATS,
       charmap: options.characterMap,
       plugins: [
-        "advlist autolink lists link image media table code fullscreen",
+        "advlist autolink lists link image media table code fullscreen checklist",
         options.characterMap ? "charmap" : ""
       ].filter(Boolean).join(" "),
       toolbar: [
-        "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table",
+        "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist checklist outdent indent | link image media table",
         options.characterMap ? "charmap" : "",
         "| removeformat code fullscreen"
       ].filter(Boolean).join(" "),
