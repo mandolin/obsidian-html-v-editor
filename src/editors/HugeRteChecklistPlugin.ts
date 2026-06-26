@@ -1,17 +1,19 @@
 import hugerte, { type Editor } from "hugerte";
 
-const CHECKLIST_SELECTOR = "ul.tox-checklist";
-const CHECKLIST_ITEM_SELECTOR = "li.tox-checklist-item";
+const CHECKLIST_SELECTOR = "ul.tox-checklist,ul.htmlv-checklist";
+const CHECKLIST_ITEM_SELECTOR = "li.tox-checklist-item,li.htmlv-checklist-item";
 const CHECKBOX_CLICK_AREA = 40;
 
 export const HUGERTE_CHECKLIST_CONTENT_STYLE = [
   "ul.tox-checklist{list-style:none;list-style-type:none;margin:0;padding-left:0;}",
+  "ul.htmlv-checklist{list-style:none;list-style-type:none;margin:0;padding-left:0;}",
   "ul.tox-checklist li{list-style:none;list-style-type:none;}",
-  "ul.tox-checklist .tox-checklist-item{position:relative;display:flex;align-items:flex-start;gap:.5em;min-height:1.5em;margin:0;padding:.1em 0;list-style:none;}",
-  "ul.tox-checklist .tox-checklist-item::before{content:'';display:inline-block;flex:0 0 auto;width:1em;height:1em;margin-top:.2em;border:1px solid #4c4c4c;border-radius:2px;background:#fff;box-sizing:border-box;cursor:pointer;}",
-  "ul.tox-checklist .tox-checklist-item[data-checked='true']::before{border-color:#4099ff;background:#4099ff;box-shadow:inset 0 0 0 2px #4099ff;}",
-  "ul.tox-checklist .tox-checklist-item[data-checked='true']::after{content:'';position:absolute;left:.22em;top:.42em;width:.55em;height:.28em;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg);pointer-events:none;}",
-  "ul.tox-checklist .tox-checklist-item[data-checked='true']{text-decoration:line-through;color:var(--text-muted,#666);}"
+  "ul.htmlv-checklist li{list-style:none;list-style-type:none;}",
+  "ul.tox-checklist .tox-checklist-item,ul.htmlv-checklist .htmlv-checklist-item{position:relative;display:flex;align-items:flex-start;gap:.5em;min-height:1.5em;margin:0;padding:.1em 0;list-style:none;}",
+  "ul.tox-checklist .tox-checklist-item::before,ul.htmlv-checklist .htmlv-checklist-item::before{content:'';display:inline-block;flex:0 0 auto;width:1em;height:1em;margin-top:.2em;border:1px solid #4c4c4c;border-radius:2px;background:#fff;box-sizing:border-box;cursor:pointer;}",
+  "ul.tox-checklist .tox-checklist-item[data-checked='true']::before,ul.htmlv-checklist .htmlv-checklist-item[data-checked='true']::before{border-color:#4099ff;background:#4099ff;box-shadow:inset 0 0 0 2px #4099ff;}",
+  "ul.tox-checklist .tox-checklist-item[data-checked='true']::after,ul.htmlv-checklist .htmlv-checklist-item[data-checked='true']::after{content:'';position:absolute;left:.22em;top:.42em;width:.55em;height:.28em;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg);pointer-events:none;}",
+  "ul.tox-checklist .tox-checklist-item[data-checked='true'],ul.htmlv-checklist .htmlv-checklist-item[data-checked='true']{text-decoration:line-through;color:var(--text-muted,#666);}"
 ].join(" ");
 
 let checklistIdCounter = 0;
@@ -210,7 +212,7 @@ function convertTableCellToChecklist(editor: Editor, cell: Element): Node | null
 
 function createChecklistElement(editor: Editor): HTMLUListElement {
   return editor.dom.create("ul", {
-    class: "tox-checklist",
+    class: "tox-checklist htmlv-checklist",
     id: generateChecklistId()
   }) as HTMLUListElement;
 }
@@ -240,16 +242,17 @@ function groupBlocksByParent(blocks: Element[]): Element[][] {
 }
 
 function convertListToChecklist(editor: Editor, list: Element): void {
-  list.classList.add("tox-checklist");
+  list.classList.add("tox-checklist", "htmlv-checklist");
   if (!list.id) {
     list.id = generateChecklistId();
   }
 
   editor.dom.select("li", list).forEach((item) => {
-    item.classList.add("tox-checklist-item");
+    item.classList.add("tox-checklist-item", "htmlv-checklist-item");
     if (!item.hasAttribute("data-checked")) {
       setChecklistItemChecked(item, false);
     }
+    ensureChecklistItemId(item);
   });
 }
 
@@ -294,8 +297,9 @@ function isTableStructuralElement(element: Element): boolean {
 
 function createChecklistItem(editor: Editor, checked = false): HTMLLIElement {
   const item = editor.getDoc().createElement("li");
-  item.className = "tox-checklist-item";
+  item.className = "tox-checklist-item htmlv-checklist-item";
   setChecklistItemChecked(item, checked);
+  ensureChecklistItemId(item);
   item.appendChild(editor.dom.create("br", { "data-mce-bogus": "1" }));
   return item;
 }
@@ -329,6 +333,12 @@ function toggleChecklistItem(editor: Editor, item: HTMLLIElement): void {
 function setChecklistItemChecked(item: Element, checked: boolean): void {
   item.setAttribute("data-checked", checked ? "true" : "false");
   item.classList.toggle("tox-checklist--checked", checked);
+}
+
+function ensureChecklistItemId(item: Element): void {
+  if (!item.hasAttribute("data-htmlv-task-id")) {
+    item.setAttribute("data-htmlv-task-id", generateTaskId());
+  }
 }
 
 function exitChecklist(editor: Editor): void {
@@ -408,4 +418,8 @@ function markChecklistChanged(editor: Editor): void {
 function generateChecklistId(): string {
   checklistIdCounter += 1;
   return `tox-checklist-${checklistIdCounter}`;
+}
+
+function generateTaskId(): string {
+  return `htmlv-task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

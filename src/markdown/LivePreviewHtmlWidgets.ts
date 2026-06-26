@@ -27,6 +27,14 @@ export interface LivePreviewHtmlWidgetsOptions {
   getPreviewSettings: (sourcePath: string, html: string) => Promise<HtmlVEditorSettings>;
 }
 
+const liveEmbedRefreshers = new Map<string, Set<() => void>>();
+
+export function refreshLivePreviewHtmlEmbeds(path: string): void {
+  for (const refresh of Array.from(liveEmbedRefreshers.get(path) ?? [])) {
+    refresh();
+  }
+}
+
 export function createLivePreviewHtmlWidgets(options: LivePreviewHtmlWidgetsOptions) {
   return Prec.highest(StateField.define<DecorationSet>({
     create: (state) => buildDecorations(state, options),
@@ -230,7 +238,10 @@ class HtmlPreviewWidget extends WidgetType {
   }
 
   destroy(dom: HTMLElement): void {
-    (dom as HtmlPreviewWidgetElement).htmlVInlineEditor?.dispose();
+    const element = dom as HtmlPreviewWidgetElement;
+    element.htmlVInlineEditor?.dispose();
+    element.htmlVEmbedRefreshCleanup?.();
+    element.htmlVEmbedRefreshCleanup = undefined;
   }
 
   ignoreEvent(): boolean {
@@ -238,6 +249,8 @@ class HtmlPreviewWidget extends WidgetType {
   }
 
   private renderPreviewDom(containerEl: HtmlPreviewWidgetElement, view: EditorView, autoOpen: boolean): void {
+    containerEl.htmlVEmbedRefreshCleanup?.();
+    containerEl.htmlVEmbedRefreshCleanup = undefined;
     containerEl.htmlVInlineEditor?.dispose();
     containerEl.htmlVInlineEditor = undefined;
     containerEl.empty();
@@ -259,6 +272,7 @@ class HtmlPreviewWidget extends WidgetType {
       }
     };
     const previewEl = containerEl.createDiv({ cls: "html-v-live-widget-preview" });
+    this.registerEmbedRefresher(containerEl, view);
     const onEdit = (event: Event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -273,6 +287,33 @@ class HtmlPreviewWidget extends WidgetType {
         }
       });
     }
+  }
+
+  private registerEmbedRefresher(containerEl: HtmlPreviewWidgetElement, view: EditorView): void {
+    if (this.options.range.type !== "embed") {
+      return;
+    }
+
+    const path = this.resolveEmbeddedFile()?.path;
+    if (!path) {
+      return;
+    }
+
+    const refresh = () => {
+      if (containerEl.isConnected && !containerEl.hasClass("is-editing")) {
+        this.renderPreviewDom(containerEl, view, false);
+      }
+    };
+
+    const refreshers = liveEmbedRefreshers.get(path) ?? new Set<() => void>();
+    refreshers.add(refresh);
+    liveEmbedRefreshers.set(path, refreshers);
+    containerEl.htmlVEmbedRefreshCleanup = () => {
+      refreshers.delete(refresh);
+      if (refreshers.size === 0) {
+        liveEmbedRefreshers.delete(path);
+      }
+    };
   }
 
   private addEditTrigger(containerEl: HTMLElement, previewEl: HTMLElement, onEdit: (event: Event) => void): void {
@@ -385,7 +426,7 @@ class HtmlPreviewWidget extends WidgetType {
       throw new Error("The embedded HTML file could not be resolved.");
     }
 
-    return this.options.app.vault.cachedRead(file);
+    return this.options.app.vault.read(file);
   }
 
   private resolveEmbeddedFile(): TFile | null {
@@ -432,6 +473,7 @@ class HtmlPreviewWidget extends WidgetType {
 
 interface HtmlPreviewWidgetElement extends HTMLElement {
   htmlVInlineEditor?: InlineHtmlEditor;
+  htmlVEmbedRefreshCleanup?: () => void;
 }
 
 interface InlineHtmlEditorOptions extends HtmlPreviewWidgetOptions {

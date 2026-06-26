@@ -149,7 +149,7 @@ class HtmlFileEmbedRenderChild extends MarkdownRenderChild {
     }
 
     try {
-      const html = await this.options.app.vault.cachedRead(this.options.file);
+      const html = await this.options.app.vault.read(this.options.file);
       const settings = await this.options.getPreviewSettings(this.options.file.path, html);
       const preview = renderHtmlForPreview(html, settings);
       this.renderer.render(this.previewEl, rewriteHtmlResourceUrls(this.options.app, this.options.file.path, preview.html), {

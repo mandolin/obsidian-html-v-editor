@@ -106,6 +106,15 @@ export class HtmlVEditorView extends TextFileView {
     }
   }
 
+  async refreshFromDiskIfClean(path: string): Promise<void> {
+    if (this.file?.path !== path || this.isDirty) {
+      return;
+    }
+
+    const data = await this.app.vault.read(this.file);
+    this.setViewData(data, false);
+  }
+
   protected async onOpen(): Promise<void> {
     this.containerEl.addClass("html-v-editor-view");
     this.renderShell();

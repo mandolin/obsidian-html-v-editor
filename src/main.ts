@@ -1,7 +1,7 @@
 import { Menu, Notice, Plugin, TAbstractFile, TFile, normalizePath, type WorkspaceLeaf } from "obsidian";
 
 import { editHtmlBlockAtCursor, editSelectedHtml } from "./commands/HtmlBlockEditorCommands";
-import { HTML_FILE_EXTENSIONS, HTML_V_EDITOR_VIEW_TYPE } from "./constants";
+import { HTML_FILE_EXTENSIONS, HTML_V_EDITOR_VIEW_TYPE, HTML_V_TASK_PANEL_VIEW_TYPE } from "./constants";
 import { normalizeCharacterMapGroups, normalizeCustomCharacters } from "./editors/HugeRteCharacterMap";
 import { cleanupHugeRteAuxiliaryUi } from "./editors/HugeRteAdapter";
 import { HtmlFileEmbedProcessor } from "./markdown/HtmlFileEmbedProcessor";
@@ -10,11 +10,14 @@ import { createLivePreviewHtmlWidgets } from "./markdown/LivePreviewHtmlWidgets"
 import { HtmlTrustManager } from "./security/HtmlTrustManager";
 import { HtmlVEditorSettingTab } from "./settings/HtmlVEditorSettingTab";
 import { DEFAULT_SETTINGS, type HtmlVEditorSettings } from "./settings/settings";
+import { HtmlVTaskView } from "./task-panel/HtmlVTaskView";
+import { TaskIndex } from "./task-panel/TaskIndex";
 import { HtmlVEditorView } from "./views/HtmlVEditorView";
 
 export default class HtmlVEditorPlugin extends Plugin {
   settings: HtmlVEditorSettings = { ...DEFAULT_SETTINGS };
   private trustManager: HtmlTrustManager | null = null;
+  private taskIndex: TaskIndex | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -26,6 +29,12 @@ export default class HtmlVEditorPlugin extends Plugin {
     this.registerView(
       HTML_V_EDITOR_VIEW_TYPE,
       (leaf) => new HtmlVEditorView(leaf, assetsBaseUrl, () => this.settings, getPreviewSettings)
+    );
+    this.taskIndex = new TaskIndex(this.app);
+    this.taskIndex.start();
+    this.registerView(
+      HTML_V_TASK_PANEL_VIEW_TYPE,
+      (leaf) => new HtmlVTaskView(leaf, this.taskIndex ?? new TaskIndex(this.app))
     );
     this.registerHtmlExtensions();
     this.addSettingTab(new HtmlVEditorSettingTab(this.app, this));
@@ -58,6 +67,16 @@ export default class HtmlVEditorPlugin extends Plugin {
       callback: () => {
         void this.openActiveHtmlFile();
       }
+    });
+    this.addCommand({
+      id: "open-task-panel",
+      name: "Open HTML V task panel",
+      callback: () => {
+        void this.openTaskPanel();
+      }
+    });
+    this.addRibbonIcon("list-checks", "Open HTML V task panel", () => {
+      void this.openTaskPanel();
     });
     this.registerEvent(this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
       this.addHtmlFileMenuItem(menu, file, source, leaf);
@@ -93,6 +112,8 @@ export default class HtmlVEditorPlugin extends Plugin {
   }
 
   onunload(): void {
+    this.taskIndex?.stop();
+    this.taskIndex = null;
     cleanupHugeRteAuxiliaryUi();
     console.log("HTML V Editor unloaded");
   }
@@ -176,6 +197,19 @@ export default class HtmlVEditorPlugin extends Plugin {
       },
       active: true
     });
+    await this.app.workspace.revealLeaf(leaf);
+  }
+
+  private async openTaskPanel(): Promise<void> {
+    let leaf = this.app.workspace.getLeavesOfType(HTML_V_TASK_PANEL_VIEW_TYPE)[0];
+    if (!leaf) {
+      leaf = this.app.workspace.getRightLeaf(false) ?? this.app.workspace.getLeaf("tab");
+      await leaf.setViewState({
+        type: HTML_V_TASK_PANEL_VIEW_TYPE,
+        active: true
+      });
+    }
+
     await this.app.workspace.revealLeaf(leaf);
   }
 
