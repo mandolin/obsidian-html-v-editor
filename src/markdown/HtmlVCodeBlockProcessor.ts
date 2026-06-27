@@ -17,7 +17,6 @@ export class HtmlVCodeBlockProcessor {
   process(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
     el.empty();
     el.addClass("html-v-code-block");
-    void this.applyDimensions(source, el, ctx);
 
     const previewEl = el.createDiv({ cls: "html-v-code-block-preview" });
     const renderer = new HtmlPreviewRenderer();
@@ -29,14 +28,12 @@ export class HtmlVCodeBlockProcessor {
       });
     });
 
-    ctx.addChild(new HtmlVCodeBlockRenderChild(el, renderer));
+    const child = new HtmlVCodeBlockRenderChild(el, renderer);
+    ctx.addChild(child);
+    child.applyDimensions(() => this.getHtmlVCodeBlockDimensions(source, el, ctx));
   }
 
   private async applyDimensions(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> {
-    if (!el.isConnected) {
-      return;
-    }
-
     applyEmbedDimensions(el, await this.getHtmlVCodeBlockDimensions(source, el, ctx));
   }
 
@@ -88,14 +85,39 @@ function findNearbyHtmlVOpeningLine(lines: string[], lineStart: number, source: 
 }
 
 function findMatchingHtmlVOpeningLine(data: string, source: string): string | undefined {
-  const lines = data.split(/\r?\n/);
-  for (let line = 0; line < lines.length; line += 1) {
-    if (isHtmlVOpeningLine(lines[line]) && isMatchingHtmlVBlock(lines, line, source)) {
-      return lines[line];
+  const normalizedSource = normalizeHtmlForMatch(source);
+  for (const block of scanHtmlVBlocks(data)) {
+    if (normalizeHtmlForMatch(block.html) === normalizedSource) {
+      return block.openingLine;
     }
   }
 
   return undefined;
+}
+
+function scanHtmlVBlocks(data: string): Array<{ openingLine: string; html: string }> {
+  const blocks: Array<{ openingLine: string; html: string }> = [];
+  const lines = data.split(/\r?\n/);
+
+  for (let line = 0; line < lines.length; line += 1) {
+    const marker = lines[line]?.match(/^\s{0,3}(`{3,}|~{3,})\s*html-v(?:\s+.*?)?\s*$/i)?.[1];
+    if (!marker) {
+      continue;
+    }
+
+    const closeLine = findFenceCloseLine(lines, line + 1, marker);
+    if (closeLine <= line) {
+      continue;
+    }
+
+    blocks.push({
+      openingLine: lines[line] ?? "",
+      html: lines.slice(line + 1, closeLine).join("\n")
+    });
+    line = closeLine;
+  }
+
+  return blocks;
 }
 
 function isMatchingHtmlVBlock(lines: string[], openingLine: number, source: string): boolean {
@@ -141,11 +163,30 @@ function escapeRegExp(value: string): string {
 }
 
 class HtmlVCodeBlockRenderChild extends MarkdownRenderChild {
+  private dimensionTimers: number[] = [];
+
   constructor(containerEl: HTMLElement, private renderer: HtmlPreviewRenderer) {
     super(containerEl);
   }
 
+  applyDimensions(getDimensions: () => Promise<Pick<HtmlEmbedSpec, "width" | "height">>): void {
+    const apply = () => {
+      void getDimensions().then((dimensions) => {
+        if (this.containerEl.isConnected) {
+          applyEmbedDimensions(this.containerEl, dimensions);
+        }
+      });
+    };
+
+    apply();
+    for (const delay of [0, 50, 250]) {
+      this.dimensionTimers.push(window.setTimeout(apply, delay));
+    }
+  }
+
   onunload(): void {
+    this.dimensionTimers.forEach((timer) => window.clearTimeout(timer));
+    this.dimensionTimers = [];
     this.renderer.destroy();
   }
 }

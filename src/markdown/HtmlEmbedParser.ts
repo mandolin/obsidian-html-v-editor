@@ -31,14 +31,23 @@ export function parseEmbedDimensions(value: string | undefined): Pick<HtmlEmbedS
   }
 
   const normalized = value.trim().toLowerCase();
-  const sizeMatch = normalized.match(/^(\d{2,5})(?:\s*x\s*(\d{2,5}))?$/);
-  if (!sizeMatch) {
+  const sizeMatch = normalized.match(/(?:^|\s|[|,{])(\d{2,5})(?:\s*x\s*(\d{2,5}))?(?=\s|$|[},])/);
+  if (sizeMatch) {
+    return {
+      width: Number(sizeMatch[1]),
+      height: sizeMatch[2] ? Number(sizeMatch[2]) : undefined
+    };
+  }
+
+  const widthMatch = normalized.match(/(?:^|\s|[,{|])(width|w)\s*[:=]\s*(\d{2,5})(?=\s|$|[},|])/);
+  const heightMatch = normalized.match(/(?:^|\s|[,{|])(height|h)\s*[:=]\s*(\d{2,5})(?=\s|$|[},|])/);
+  if (!widthMatch && !heightMatch) {
     return {};
   }
 
   return {
-    width: Number(sizeMatch[1]),
-    height: sizeMatch[2] ? Number(sizeMatch[2]) : undefined
+    width: widthMatch ? Number(widthMatch[2]) : undefined,
+    height: heightMatch ? Number(heightMatch[2]) : undefined
   };
 }
 
