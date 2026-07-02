@@ -1,6 +1,6 @@
-# Testing Checklist
+# 测试清单
 
-Use a disposable vault for manual verification.
+使用一次性测试 vault 做手动验证，避免影响真实资料库。
 
 ## G-P1 稳定性测试样例
 
@@ -25,7 +25,7 @@ GP1-测试入口.md
 - 任务面板勾选后，已打开的 HTML tab、Markdown 阅读模式、Live Preview widget 是否刷新。
 - `large-task-benchmark.md` 仅作为 G-P2 性能基准，不要求 G-P1 完成性能优化。
 
-## Build
+## 构建
 
 ```powershell
 npm install
@@ -33,63 +33,63 @@ npm run build
 npm run release
 ```
 
-Expected:
+预期结果：
 
-- `main.js` exists.
-- `manifest.json` exists.
-- `styles.css` exists.
-- `hugerte/` exists.
-- `release/html-v-editor/` exists.
-- `release/html-v-editor-0.1.0.zip` exists.
+- `main.js` 存在。
+- `manifest.json` 存在。
+- `styles.css` 存在。
+- `hugerte/` 存在。
+- `release/html-v-editor/` 存在。
+- `release/html-v-editor-0.1.0.zip` 存在。
 
-## Local Install
+## 本地安装
 
-Copy this folder into a test vault:
+将以下目录复制到测试 vault：
 
 ```text
 release/html-v-editor/
 ```
 
-Target:
+目标位置：
 
 ```text
 <vault>/.obsidian/plugins/html-v-editor/
 ```
 
-Enable `HTML V Editor` in Obsidian community plugin settings.
+然后在 Obsidian 社区插件设置中启用 `HTML V Editor`。
 
-## HTML File Editing
+## HTML 文件编辑
 
-Create `sample.html`:
+创建 `sample.html`：
 
 ```html
 <h1>Hello</h1>
 <p>Original</p>
 ```
 
-Verify:
+验证：
 
-- Opening `sample.html` uses the HTML V Editor view.
-- Preview mode renders the file.
-- Edit mode loads HugeRTE.
-- Edit mode can switch to TipTap, ProseMirror, and Source.
-- Source mode can edit raw HTML.
-- Save writes back to `sample.html`.
+- 打开 `sample.html` 时使用 HTML V Editor 视图。
+- Preview 模式可以渲染文件。
+- Edit 模式可以加载 HugeRTE。
+- Edit 模式可以切换到 TipTap、ProseMirror、Source。
+- Source 模式可以编辑原始 HTML。
+- Save 可以写回 `sample.html`。
 
-## Source Backend
+## Source 后端
 
-Verify:
+验证：
 
-- Set `Default Source backend` to `CodeMirror`.
-- File view Source mode shows a CodeMirror editor with line numbers.
-- Switching a modal editor to Source also uses CodeMirror.
-- Set `Default Source backend` to `Textarea`.
-- File view Source mode and modal Source use a plain textarea.
-- Editing and saving work with both backends.
+- 将 `Default Source backend` 设置为 `CodeMirror`。
+- 文件视图 Source 模式显示带行号的 CodeMirror 编辑器。
+- 模态编辑器切换到 Source 时也使用 CodeMirror。
+- 将 `Default Source backend` 设置为 `Textarea`。
+- 文件视图 Source 模式和模态 Source 模式使用普通 textarea。
+- 两种后端下编辑和保存都正常。
 
-## Preview Security
+## 预览安全
 
-Create an HTML file containing:
+创建包含以下内容的 HTML 文件：
 
 ```html
 <script>window.test = true;</script>
@@ -97,15 +97,15 @@ Create an HTML file containing:
 <p onclick="alert(1)">click</p>
 ```
 
-Verify:
+验证：
 
-- Safe mode removes script, iframe, and event attributes.
-- Sandbox mode keeps original HTML but restricts iframe permissions.
-- Trusted mode still keeps scripts disabled unless explicitly enabled.
+- Safe 模式会移除 script、iframe 和事件属性。
+- Sandbox 模式保留原始 HTML，但 iframe 权限受 sandbox 限制。
+- Trusted 模式默认仍不执行脚本，除非用户明确启用脚本执行。
 
-## Trust Rules
+## Trust 规则
 
-Create `.htmlv` at the vault root:
+在 vault 根目录创建 `.htmlv`：
 
 ```json
 {
@@ -119,15 +119,15 @@ Create `.htmlv` at the vault root:
 }
 ```
 
-Verify:
+验证：
 
-- Folder trust files are enabled in settings.
-- `sample.html` uses Sandbox rendering even when the global default is Safe.
-- Invalid JSON in `.htmlv` does not break plugin loading.
+- 设置中已启用文件夹 trust 配置。
+- 即使全局默认是 Safe，`sample.html` 也使用 Sandbox 渲染。
+- `.htmlv` 中存在非法 JSON 时，不会破坏插件加载。
 
 ## Markdown `html-v`
 
-Create:
+创建：
 
 ````markdown
 ```html-v
@@ -135,32 +135,32 @@ Create:
 ```
 ````
 
-Verify:
+验证：
 
-- Reading mode shows an HTML V preview block.
-- Reading mode does not show an `HTML V` title bar or edit button.
-- In Live Preview, the fenced block is replaced with an HTML V widget when the cursor is outside the block.
-- In Live Preview, ` ```html-v 800x600 ` applies the requested preview dimensions.
-- Editing from Live Preview saves back to the fenced block.
+- 阅读模式显示 HTML V 预览块。
+- 阅读模式不显示 `HTML V` 标题栏或编辑按钮。
+- Live Preview 中，光标不在 fenced block 内时，该块会替换为 HTML V widget。
+- Live Preview 中，` ```html-v 800x600 ` 可以应用指定预览尺寸。
+- 从 Live Preview 编辑后，可以保存回 fenced block。
 
-## HTML File Embed
+## HTML 文件 Embed
 
-Create:
+创建：
 
 ```markdown
 ![[sample.html]]
 ```
 
-Verify:
+验证：
 
-- Reading mode shows an HTML V embed preview.
-- Refresh rereads the file.
-- Edit opens an inline modal and saves changes back to `sample.html`.
-- In Live Preview, the embed line is replaced with an HTML V widget when the cursor is outside the line.
+- 阅读模式显示 HTML V embed 预览。
+- Refresh 可以重新读取文件。
+- Edit 打开内联模态编辑器，并将修改保存回 `sample.html`。
+- Live Preview 中，光标不在 embed 行内时，该行会替换为 HTML V widget。
 
-## Raw HTML Commands
+## Raw HTML 命令
 
-Create a Markdown file with:
+创建包含以下内容的 Markdown 文件：
 
 ```html
 <section>
@@ -168,10 +168,10 @@ Create a Markdown file with:
 </section>
 ```
 
-Verify:
+验证：
 
-- `Edit selected HTML with HTML V Editor` replaces the selection.
-- `Edit HTML block at cursor with HTML V Editor` replaces the full block.
-- If no complete HTML block is found, no document content is changed.
-- In Live Preview and Reading mode, plain raw HTML blocks are rendered by Obsidian, not automatically replaced by HTML V Editor.
-- Use a `html-v` fenced block when plugin-managed preview and inline editing are desired.
+- `Edit selected HTML with HTML V Editor` 可以替换选区。
+- `Edit HTML block at cursor with HTML V Editor` 可以替换完整 HTML block。
+- 找不到完整 HTML block 时，不修改文档内容。
+- Live Preview 和阅读模式中，普通 raw HTML block 仍由 Obsidian 自身渲染，不会自动替换为 HTML V Editor。
+- 需要插件管理预览和内联编辑时，应使用 `html-v` fenced block。

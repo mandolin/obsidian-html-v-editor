@@ -202,13 +202,20 @@ export class HtmlVTaskView extends ItemView {
     checkbox.checked = task.checked;
     checkbox.addEventListener("change", async () => {
       checkbox.disabled = true;
-      await this.writer.setChecked(task, checkbox.checked);
-      // 回写后主动刷新已打开的 HTML tab、Live Preview widget 和阅读模式嵌入。
-      await this.refreshOpenHtmlViews(task.path);
-      refreshLivePreviewHtmlEmbeds(task.path);
-      this.refreshOpenMarkdownEmbeds(task.path);
-      await this.reindexTaskFile(task);
-      checkbox.disabled = false;
+      try {
+        await this.writer.setChecked(task, checkbox.checked);
+        // 回写后主动刷新已打开的 HTML tab、Live Preview widget 和阅读模式嵌入。
+        await this.refreshOpenHtmlViews(task.path);
+        refreshLivePreviewHtmlEmbeds(task.path);
+        this.refreshOpenMarkdownEmbeds(task.path);
+        await this.reindexTaskFile(task);
+      } catch (error) {
+        console.error("Failed to update task state", error);
+        checkbox.checked = task.checked;
+        new Notice(error instanceof Error ? error.message : "Unable to update task.");
+      } finally {
+        checkbox.disabled = false;
+      }
     });
 
     const content = row.createDiv({ cls: "html-v-task-panel-task-content" });

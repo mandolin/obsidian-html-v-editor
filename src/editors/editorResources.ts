@@ -14,15 +14,20 @@ export function getEditorDocumentBaseUrl(app: App, sourcePath: string | undefine
 }
 
 export function resolveVaultResourceUrl(app: App, sourcePath: string | undefined, resourcePath: string | null): string | null {
-  if (!sourcePath || !resourcePath || shouldKeepResourceUrl(resourcePath)) {
+  if (!sourcePath || !resourcePath) {
     return resourcePath;
   }
 
   const decodedResourcePath = decodeHtmlResourcePath(resourcePath);
+  const absoluteVaultPath = getVaultPathFromAbsoluteOrAppUrl(app, decodedResourcePath);
+  if (shouldKeepResourceUrl(decodedResourcePath) && !absoluteVaultPath) {
+    return resourcePath;
+  }
+
   const sourceFolder = getParentPath(sourcePath);
-  const vaultPath = decodedResourcePath.startsWith("/")
+  const vaultPath = absoluteVaultPath ?? (decodedResourcePath.startsWith("/")
     ? normalizePath(decodedResourcePath.slice(1))
-    : normalizePath(sourceFolder ? `${sourceFolder}/${decodedResourcePath}` : decodedResourcePath);
+    : normalizePath(sourceFolder ? `${sourceFolder}/${decodedResourcePath}` : decodedResourcePath));
 
   const file = app.vault.getAbstractFileByPath(vaultPath);
   if (file instanceof TFile) {
@@ -92,6 +97,43 @@ function decodeHtmlResourcePath(value: string): string {
   } catch {
     return value;
   }
+}
+
+function getVaultPathFromAbsoluteOrAppUrl(app: App, value: string): string | null {
+  const appUrlPath = getPathnameFromAppUrl(value);
+  const candidate = appUrlPath ?? value;
+  const basePath = getVaultBasePath(app);
+  if (!basePath) {
+    return null;
+  }
+
+  const normalizedCandidate = normalizePath(candidate.replace(/^\/([A-Za-z]:\/)/, "$1"));
+  const normalizedBase = normalizePath(basePath);
+  if (normalizedCandidate.toLowerCase() === normalizedBase.toLowerCase()) {
+    return "";
+  }
+
+  // Obsidian 复制出的 app:// 或 Windows 绝对路径，只要落在当前 vault 内，就转回 vault 相对路径。
+  const basePrefix = `${normalizedBase}/`.toLowerCase();
+  if (normalizedCandidate.toLowerCase().startsWith(basePrefix)) {
+    return normalizedCandidate.slice(normalizedBase.length + 1);
+  }
+
+  return null;
+}
+
+function getPathnameFromAppUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "app:" ? decodeURI(url.pathname) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getVaultBasePath(app: App): string | null {
+  const adapter = app.vault.adapter as { getBasePath?: () => string };
+  return typeof adapter.getBasePath === "function" ? adapter.getBasePath() : null;
 }
 
 function getParentPath(path: string): string {

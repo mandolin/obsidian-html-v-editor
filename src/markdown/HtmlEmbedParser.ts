@@ -59,6 +59,9 @@ export function applyEmbedDimensions(el: HTMLElement, spec: Pick<HtmlEmbedSpec, 
   el.removeClass("html-v-has-embed-height");
   el.style.removeProperty("--html-v-embed-width");
   el.style.removeProperty("--html-v-embed-height");
+  el.style.removeProperty("width");
+  el.style.removeProperty("height");
+  el.style.removeProperty("max-width");
 
   if (spec.width) {
     el.addClass("html-v-has-embed-width");

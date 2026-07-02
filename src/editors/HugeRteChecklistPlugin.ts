@@ -349,10 +349,11 @@ function exitChecklist(editor: Editor): void {
   }
 
   editor.dom.select("li", list).forEach((li) => {
-    li.classList.remove("tox-checklist-item", "tox-checklist--checked");
+    li.classList.remove("tox-checklist-item", "htmlv-checklist-item", "tox-checklist--checked");
     li.removeAttribute("data-checked");
+    li.removeAttribute("data-htmlv-task-id");
   });
-  list.classList.remove("tox-checklist");
+  list.classList.remove("tox-checklist", "htmlv-checklist");
   markChecklistChanged(editor);
 }
 
@@ -369,7 +370,7 @@ function exitChecklistAndCreateParagraph(editor: Editor, item: HTMLLIElement): v
 
   if (itemsAfter.length > 0) {
     const nextList = editor.dom.create("ul", {
-      class: "tox-checklist",
+      class: "tox-checklist htmlv-checklist",
       id: generateChecklistId()
     });
     itemsAfter.forEach((nextItem) => nextList.appendChild(nextItem));
