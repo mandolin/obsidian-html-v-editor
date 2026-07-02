@@ -78,7 +78,9 @@ styles.css
 
 ## 后续建议
 
-1. 完成 git commit 和 push。
-2. 创建 GitHub Release `1.0.0`。
-3. 上传 `main.js`、`manifest.json`、`styles.css`。
-4. 提交 Obsidian Community Plugins 发布申请。
+1. 公开页当前已经发布到 Obsidian Community Plugins，后续发布新版本时继续保持标准三件套 release assets：`main.js`、`manifest.json`、`styles.css`。
+2. 将公开页 `Review: Caution` 降级作为发布后优化事项，而不是当前阻塞事项。优先级建议：
+   - 补 GitHub artifact attestations，降低 release provenance 相关提示。
+   - 评估并尽量减少 Vault Enumeration 与 Clipboard Access 行为提示。
+   - 清理自动审核中的非阻塞 warning：命令名去插件名前缀、`document` 改 `activeDocument`、TypeScript unsafe 访问、CSS lint。
+3. 下一轮小版本可单独设为“市场质量与 Caution 降级”专项，避免和功能开发混在一起。
