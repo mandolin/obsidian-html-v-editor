@@ -66,13 +66,17 @@ export function applyEmbedDimensions(el: HTMLElement, spec: Pick<HtmlEmbedSpec, 
   if (spec.width) {
     el.addClass("html-v-has-embed-width");
     el.style.setProperty("--html-v-embed-width", `${spec.width}px`);
-    el.style.width = `${spec.width}px`;
-    el.style.maxWidth = "100%";
+    el.setCssStyles({
+      width: `${spec.width}px`,
+      maxWidth: "100%"
+    });
   }
 
   if (spec.height) {
     el.addClass("html-v-has-embed-height");
     el.style.setProperty("--html-v-embed-height", `${spec.height}px`);
-    el.style.height = `${spec.height}px`;
+    el.setCssStyles({
+      height: `${spec.height}px`
+    });
   }
 }

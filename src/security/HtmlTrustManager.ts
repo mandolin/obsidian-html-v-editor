@@ -145,8 +145,8 @@ function htmlMatchesSourceRule(html: string, pattern: string): boolean {
 
 function extractExternalOrigins(html: string): string[] {
   const origins = new Set<string>();
-  const doc = document.implementation.createHTMLDocument("HTML V Editor Trust Sources");
-  doc.body.innerHTML = html;
+  // 用 DOMParser 提取外链来源，避免对临时文档执行 innerHTML 赋值。
+  const doc = new DOMParser().parseFromString(html, "text/html");
 
   for (const element of Array.from(doc.body.querySelectorAll("[src], [href]"))) {
     const value = element.getAttribute("src") ?? element.getAttribute("href");

@@ -24,12 +24,16 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "HTML V Editor" });
+    new Setting(containerEl)
+      .setName("HTML V Editor")
+      .setHeading();
     containerEl.createEl("p", {
       text: "当前设置以稳定默认值为主。修改后会刷新已打开的 HTML 预览和任务索引。"
     });
 
-    containerEl.createEl("h3", { text: "编辑器" });
+    new Setting(containerEl)
+      .setName("编辑器")
+      .setHeading();
 
     new Setting(containerEl)
       .setName("默认可视化编辑器")
@@ -77,7 +81,9 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", { text: "特殊字符" });
+    new Setting(containerEl)
+      .setName("特殊字符")
+      .setHeading();
 
     new Setting(containerEl)
       .setName("特殊字符按钮")
@@ -91,7 +97,9 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h4", { text: "默认字符组" });
+    new Setting(containerEl)
+      .setName("默认字符组")
+      .setHeading();
     for (const group of CHARACTER_MAP_GROUPS) {
       new Setting(containerEl)
         .setName(group.name)
@@ -134,7 +142,9 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", { text: "任务面板" });
+    new Setting(containerEl)
+      .setName("任务面板")
+      .setHeading();
 
     new Setting(containerEl)
       .setName("索引普通 Markdown task")
@@ -179,7 +189,9 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", { text: "预览与安全" });
+    new Setting(containerEl)
+      .setName("预览与安全")
+      .setHeading();
 
     new Setting(containerEl)
       .setName("默认预览安全级别")

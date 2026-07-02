@@ -99,8 +99,8 @@ function sanitizeSafeHtml(html: string, settings: HtmlVEditorSettings): string {
     ALLOW_DATA_ATTR: false
   });
 
-  const doc = document.implementation.createHTMLDocument("HTML V Editor Safe Preview");
-  doc.body.innerHTML = sanitized;
+  // DOMPurify 先清洗，再用 DOMParser 建立隔离文档，避免直接 innerHTML 写入。
+  const doc = new DOMParser().parseFromString(sanitized, "text/html");
 
   for (const element of Array.from(doc.body.querySelectorAll("*"))) {
     removeEventHandlerAttributes(element);

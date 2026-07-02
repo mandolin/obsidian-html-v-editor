@@ -20,8 +20,7 @@ const CHECKLIST_ITEM_SELECTOR = [
 
 export function parseHtmlTasks(html: string, options: HtmlTaskParseOptions): HtmlVTask[] {
   // 统一使用浏览器 DOM 解析 HTML，避免用字符串规则误伤嵌套标签和表格内 checklist。
-  const doc = document.implementation.createHTMLDocument("HTML V Task Parser");
-  doc.body.innerHTML = html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
 
   return Array.from(doc.body.querySelectorAll(CHECKLIST_ITEM_SELECTOR))
     // 同一 li 可能同时匹配 htmlv/tox 选择器，需要去重后再生成任务。
@@ -112,8 +111,7 @@ export function replaceHtmlVCodeBlock(markdown: string, blockIndex: number, repl
 
 export function updateHtmlTaskChecked(html: string, taskId: string | undefined, occurrence: number, checked: boolean): string {
   // 优先按稳定 id 回写；旧数据没有 id 时再退回到 occurrence，保证兼容早期 checklist。
-  const doc = document.implementation.createHTMLDocument("HTML V Task Writer");
-  doc.body.innerHTML = html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
   const items = Array.from(doc.body.querySelectorAll(CHECKLIST_ITEM_SELECTOR))
     .filter((item, index, allItems) => allItems.indexOf(item) === index);
   const target = taskId

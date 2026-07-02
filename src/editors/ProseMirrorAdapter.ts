@@ -145,7 +145,7 @@ export class ProseMirrorAdapter implements HtmlEditorAdapter {
 }
 
 function parseHtmlToDoc(html: string) {
-  const container = document.createElement("div");
-  container.innerHTML = html || "<p></p>";
-  return ProseMirrorDOMParser.fromSchema(schema).parse(container);
+  // 用 DOMParser 解析用户 HTML，避免市场审核把 innerHTML 赋值视为不安全写入。
+  const doc = new DOMParser().parseFromString(html || "<p></p>", "text/html");
+  return ProseMirrorDOMParser.fromSchema(schema).parse(doc.body);
 }

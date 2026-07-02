@@ -42,8 +42,8 @@ export function rewriteHtmlResourceUrls(app: App, sourcePath: string | undefined
     return html;
   }
 
-  const doc = document.implementation.createHTMLDocument("HTML V Editor Preview Resources");
-  doc.body.innerHTML = html;
+  // 只在隔离文档中改写资源路径，避免直接 innerHTML 写入触发市场审核错误。
+  const doc = new DOMParser().parseFromString(html, "text/html");
 
   rewriteElements(doc, "img[src],source[src],script[src],video[src],audio[src],iframe[src]", "src", (value) => {
     return resolveVaultResourceUrl(app, sourcePath, value);

@@ -139,7 +139,7 @@ class HtmlFileEmbedRenderChild extends MarkdownRenderChild {
     applyEmbedDimensions(this.containerEl, this.options.embedSpec);
     this.previewEl = this.containerEl.createDiv({ cls: "html-v-file-embed-preview" });
     if (this.options.embedSpec.height) {
-      this.previewEl.style.minHeight = "0";
+      this.previewEl.setCssStyles({ minHeight: "0" });
     }
   }
 

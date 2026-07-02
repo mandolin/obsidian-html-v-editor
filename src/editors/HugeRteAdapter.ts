@@ -227,25 +227,25 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       throw new Error("Unable to create isolated HugeRTE frame.");
     }
 
-    doc.open();
-    doc.write([
-      "<!doctype html>",
-      "<html>",
-      "<head>",
-      "<meta charset=\"utf-8\">",
-      "<style>",
+    doc.head.replaceChildren();
+    doc.body.replaceChildren();
+
+    const meta = doc.createElement("meta");
+    meta.setAttribute("charset", "utf-8");
+    doc.head.appendChild(meta);
+
+    const style = doc.createElement("style");
+    style.textContent = [
       HUGERTE_INLINE_SKIN_CSS,
       "html,body,#html-v-hugerte-frame-host{height:100%;margin:0;overflow:hidden;background:#fff;}",
       "body{font-family:Arial,sans-serif;}",
-      "#html-v-hugerte-frame-host{display:flex;flex-direction:column;}",
-      "</style>",
-      "</head>",
-      "<body>",
-      "<div id=\"html-v-hugerte-frame-host\"></div>",
-      "</body>",
-      "</html>"
-    ].join(""));
-    doc.close();
+      "#html-v-hugerte-frame-host{display:flex;flex-direction:column;}"
+    ].join("");
+    doc.head.appendChild(style);
+
+    const frameHost = doc.createElement("div");
+    frameHost.id = "html-v-hugerte-frame-host";
+    doc.body.appendChild(frameHost);
 
     const host = doc.getElementById("html-v-hugerte-frame-host");
     if (!host) {
