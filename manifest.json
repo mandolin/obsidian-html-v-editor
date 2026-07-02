@@ -1,7 +1,7 @@
 {
   "id": "html-v-editor",
   "name": "HTML V Editor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.5.0",
   "description": "Edit and preview HTML/HTM files inside Obsidian.",
   "author": "mandolin",
