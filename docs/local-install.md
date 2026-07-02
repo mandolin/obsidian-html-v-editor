@@ -1,58 +1,58 @@
-# Local Install
+# 本地安装
 
-HTML V Editor can be installed locally without the Obsidian plugin marketplace.
+HTML V Editor 可以不经过 Obsidian 插件市场，直接本地安装。
 
-## Build A Local Package
+## 构建本地包
 
 ```powershell
 npm install
 npm run release
 ```
 
-This creates:
+命令会生成：
 
 ```text
 release/html-v-editor/
 release/html-v-editor-0.1.0.zip
 ```
 
-## Install From Folder
+## 从文件夹安装
 
-Copy:
+复制：
 
 ```text
 release/html-v-editor/
 ```
 
-to:
+到：
 
 ```text
 <your-vault>/.obsidian/plugins/html-v-editor/
 ```
 
-Then open Obsidian and enable `HTML V Editor` in community plugin settings.
+然后打开 Obsidian，在社区插件设置中启用 `HTML V Editor`。
 
-## Install From Zip
+## 从 zip 安装
 
-Extract:
+解压：
 
 ```text
 release/html-v-editor-0.1.0.zip
 ```
 
-into:
+到：
 
 ```text
 <your-vault>/.obsidian/plugins/
 ```
 
-After extraction, this folder should exist:
+解压后应存在：
 
 ```text
 <your-vault>/.obsidian/plugins/html-v-editor/
 ```
 
-It must contain:
+该目录必须包含：
 
 ```text
 main.js

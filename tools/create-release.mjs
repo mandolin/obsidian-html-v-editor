@@ -23,15 +23,15 @@ for (const file of files) {
 await writeFile(
   path.join(releaseRoot, "INSTALL.txt"),
   [
-    "HTML V Editor local install",
+    "HTML V Editor 本地安装",
     "",
-    `Version: ${manifest.version}`,
+    `版本：${manifest.version}`,
     "",
-    "Copy the html-v-editor folder into:",
+    "将 html-v-editor 文件夹复制到：",
     "",
     "<your-vault>/.obsidian/plugins/html-v-editor/",
     "",
-    "Then enable HTML V Editor in Obsidian community plugin settings.",
+    "然后在 Obsidian 社区插件设置中启用 HTML V Editor。",
     ""
   ].join("\n"),
   "utf8"
