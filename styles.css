@@ -883,6 +883,29 @@ body .tox-tooltip {
   flex: 0 0 auto;
 }
 
+.html-v-task-panel-filter-grid {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.html-v-task-panel-filter {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.html-v-task-panel-filter-select {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  font-size: var(--font-ui-smaller);
+}
+
 .html-v-task-panel-summary {
   flex: 0 0 auto;
   color: var(--text-muted);
@@ -964,6 +987,35 @@ body .tox-tooltip {
 .html-v-task-panel-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.html-v-task-panel-pagination {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.html-v-task-panel-page-button {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+}
+
+.html-v-task-panel-page-button:hover:not(:disabled) {
+  background: var(--interactive-hover);
+}
+
+.html-v-task-panel-page-label {
+  min-width: 52px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-align: center;
 }
 
 /* HTML V Editor generated HugeRTE CSS start */

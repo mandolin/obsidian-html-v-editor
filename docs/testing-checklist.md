@@ -25,6 +25,24 @@ GP1-测试入口.md
 - 任务面板勾选后，已打开的 HTML tab、Markdown 阅读模式、Live Preview widget 是否刷新。
 - `large-task-benchmark.md` 仅作为 G-P2 性能基准，不要求 G-P1 完成性能优化。
 
+## G-P2 任务面板测试
+
+使用同一个 G-P1 smoke test 目录，重点打开：
+
+```text
+large-task-benchmark.md
+```
+
+验证：
+
+- HTML V Tasks 面板能显示普通 Markdown task 和 `html-v` checklist task。
+- Source 下拉可以过滤 `HTML file`、`html-v block`、`Markdown task`。
+- Tag 下拉可以过滤 `#gp1`、`#benchmark` 等标签。
+- Project 下拉可以过滤 `#project/...` 任务。
+- `Only current file` 只显示当前文件及其嵌入 HTML 文件中的任务。
+- 大量任务时，每页最多显示 100 条，并出现 Prev / Next 分页控件。
+- 翻页、搜索、状态过滤、来源过滤后，任务列表仍可正常勾选和复制。
+
 ## 构建
 
 ```powershell

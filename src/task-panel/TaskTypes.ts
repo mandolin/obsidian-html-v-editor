@@ -33,12 +33,21 @@ export interface TaskFilter {
   status: "all" | "open" | "done";
   checklistOnly: boolean;
   currentFileOnly: boolean;
+  sourceType: "all" | HtmlVTaskSourceType;
+  tag: string;
+  project: string;
   currentPath?: string;
   currentPaths?: string[];
 }
 
 export interface TaskIndexSnapshot {
   tasks: HtmlVTask[];
+  totalTasks: number;
+  openTasks: number;
+  doneTasks: number;
+  availableSourceTypes: HtmlVTaskSourceType[];
+  availableTags: string[];
+  availableProjects: string[];
   isReady: boolean;
   isIndexing: boolean;
 }

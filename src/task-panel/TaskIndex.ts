@@ -87,8 +87,16 @@ export class TaskIndex extends Events {
 
   getSnapshot(filter?: Partial<TaskFilter>): TaskIndexSnapshot {
     const tasks = Array.from(this.tasksByPath.values()).flat();
+    const filteredTasks = filter ? filterTasks(tasks, filter) : tasks;
+    const openTasks = tasks.filter((task) => !task.checked).length;
     return {
-      tasks: filter ? filterTasks(tasks, filter) : tasks,
+      tasks: filteredTasks,
+      totalTasks: tasks.length,
+      openTasks,
+      doneTasks: tasks.length - openTasks,
+      availableSourceTypes: getAvailableSourceTypes(tasks),
+      availableTags: getAvailableTags(tasks),
+      availableProjects: getAvailableProjects(tasks),
       isReady: this.isReady,
       isIndexing: this.isIndexing
     };
@@ -146,6 +154,15 @@ function filterTasks(tasks: HtmlVTask[], filter: Partial<TaskFilter>): HtmlVTask
     if (filter.checklistOnly && task.sourceType === "markdown-task") {
       return false;
     }
+    if (filter.sourceType && filter.sourceType !== "all" && task.sourceType !== filter.sourceType) {
+      return false;
+    }
+    if (filter.tag && !task.tags.includes(filter.tag)) {
+      return false;
+    }
+    if (filter.project && task.project !== filter.project) {
+      return false;
+    }
     // “当前文件”包含当前 Markdown 自身，以及其中嵌入的 HTML 文件。
     if (filter.currentFileOnly && !getCurrentPathSet(filter).has(task.path)) {
       return false;
@@ -169,4 +186,17 @@ function getCurrentPathSet(filter: Partial<TaskFilter>): Set<string> {
     ...(filter.currentPaths ?? []),
     ...(filter.currentPath ? [filter.currentPath] : [])
   ]);
+}
+
+function getAvailableSourceTypes(tasks: HtmlVTask[]): HtmlVTask["sourceType"][] {
+  return Array.from(new Set(tasks.map((task) => task.sourceType))).sort();
+}
+
+function getAvailableTags(tasks: HtmlVTask[]): string[] {
+  return Array.from(new Set(tasks.flatMap((task) => task.tags))).sort((a, b) => a.localeCompare(b));
+}
+
+function getAvailableProjects(tasks: HtmlVTask[]): string[] {
+  return Array.from(new Set(tasks.map((task) => task.project).filter((project): project is string => Boolean(project))))
+    .sort((a, b) => a.localeCompare(b));
 }

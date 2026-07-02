@@ -128,6 +128,9 @@ export function updateHtmlTaskChecked(html: string, taskId: string | undefined, 
   target.classList.toggle("tox-checklist--checked", checked);
   // 回写时补上 htmlv 类名，让后续索引逐步转向项目自己的结构标记。
   target.classList.add("htmlv-checklist-item");
+  if (!target.hasAttribute("data-htmlv-task-id")) {
+    target.setAttribute("data-htmlv-task-id", buildGeneratedHtmlTaskId());
+  }
 
   const list = target.closest("ul");
   list?.classList.add("htmlv-checklist");
@@ -172,4 +175,8 @@ function extractTags(text: string): string[] {
 
 function extractProject(text: string): string | undefined {
   return extractTags(text).find((tag) => tag.startsWith("#project/"))?.slice("#project/".length);
+}
+
+function buildGeneratedHtmlTaskId(): string {
+  return `htmlv-task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

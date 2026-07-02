@@ -75,6 +75,22 @@ release/html-v-editor-0.1.0.zip
 
 See [docs/local-install.md](docs/local-install.md) for the full local install flow and [docs/testing-checklist.md](docs/testing-checklist.md) for manual verification.
 
+## HTML V Tasks
+
+HTML V Tasks 是插件内置的任务面板，用于聚合 HTML checklist、Markdown `html-v` code block checklist，以及普通 Markdown task。
+
+当前支持：
+
+- 按 All / Open / Done 过滤。
+- 只查看 HugeRTE / HTML V checklist。
+- 只查看当前文件，以及当前 Markdown 文件嵌入的 HTML 文件。
+- 按任务来源过滤：HTML file、html-v block、Markdown task。
+- 按 `#tag` 和 `#project/name` 过滤。
+- 从面板勾选任务，并回写到对应 HTML 文件、`html-v` code block 或 Markdown task 行。
+- 大量任务时使用分页渲染，降低面板一次性创建 DOM 的压力。
+
+数据模型和回写边界见 [docs/task-panel-data-model.md](docs/task-panel-data-model.md)。
+
 ## Stage 0 Scope
 
 Completed baseline:

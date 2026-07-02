@@ -9,17 +9,27 @@ import { TaskIndex } from "./TaskIndex";
 import { TaskWriter } from "./TaskWriter";
 import type { HtmlVTask, TaskFilter } from "./TaskTypes";
 
+const TASK_PAGE_SIZE = 100;
+
 export class HtmlVTaskView extends ItemView {
   private readonly writer: TaskWriter;
   private rootEl: HTMLElement | null = null;
   private listEl: HTMLElement | null = null;
   private summaryEl: HTMLElement | null = null;
+  private paginationEl: HTMLElement | null = null;
   private searchInput: HTMLInputElement | null = null;
+  private sourceTypeSelect: HTMLSelectElement | null = null;
+  private tagSelect: HTMLSelectElement | null = null;
+  private projectSelect: HTMLSelectElement | null = null;
+  private page = 1;
   private filter: TaskFilter = {
     query: "",
     status: "open",
     checklistOnly: false,
     currentFileOnly: false,
+    sourceType: "all",
+    tag: "",
+    project: "",
     currentPath: undefined,
     currentPaths: []
   };
@@ -64,7 +74,11 @@ export class HtmlVTaskView extends ItemView {
     this.rootEl = null;
     this.listEl = null;
     this.summaryEl = null;
+    this.paginationEl = null;
     this.searchInput = null;
+    this.sourceTypeSelect = null;
+    this.tagSelect = null;
+    this.projectSelect = null;
   }
 
   private renderShell(): void {
@@ -84,6 +98,7 @@ export class HtmlVTaskView extends ItemView {
     this.searchInput.value = this.filter.query;
     this.searchInput.addEventListener("input", () => {
       this.filter.query = this.searchInput?.value ?? "";
+      this.resetPage();
       this.renderTasks();
     });
 
@@ -104,6 +119,7 @@ export class HtmlVTaskView extends ItemView {
       });
       button.addEventListener("click", () => {
         this.filter.status = status;
+        this.resetPage();
         this.renderStatusButtons(statusGroup);
         this.renderTasks();
       });
@@ -116,6 +132,7 @@ export class HtmlVTaskView extends ItemView {
       checked: this.filter.checklistOnly,
       onChange: (checked) => {
         this.filter.checklistOnly = checked;
+        this.resetPage();
         this.renderTasks();
       }
     });
@@ -125,12 +142,31 @@ export class HtmlVTaskView extends ItemView {
       onChange: (checked) => {
         this.filter.currentFileOnly = checked;
         this.updateCurrentPath();
+        this.resetPage();
         this.renderTasks();
       }
     });
 
+    const advancedGroup = root.createDiv({ cls: "html-v-task-panel-filter-grid" });
+    this.sourceTypeSelect = this.createFilterSelect(advancedGroup, "Source", (value) => {
+      this.filter.sourceType = isTaskSourceTypeFilter(value) ? value : "all";
+      this.resetPage();
+      this.renderTasks();
+    });
+    this.tagSelect = this.createFilterSelect(advancedGroup, "Tag", (value) => {
+      this.filter.tag = value;
+      this.resetPage();
+      this.renderTasks();
+    });
+    this.projectSelect = this.createFilterSelect(advancedGroup, "Project", (value) => {
+      this.filter.project = value;
+      this.resetPage();
+      this.renderTasks();
+    });
+
     this.summaryEl = root.createDiv({ cls: "html-v-task-panel-summary" });
     this.listEl = root.createDiv({ cls: "html-v-task-panel-list" });
+    this.paginationEl = root.createDiv({ cls: "html-v-task-panel-pagination" });
   }
 
   private createOptionCheckbox(parent: HTMLElement, options: {
@@ -150,6 +186,14 @@ export class HtmlVTaskView extends ItemView {
     label.createSpan({ text: options.label });
   }
 
+  private createFilterSelect(parent: HTMLElement, labelText: string, onChange: (value: string) => void): HTMLSelectElement {
+    const label = parent.createEl("label", { cls: "html-v-task-panel-filter" });
+    label.createSpan({ text: labelText });
+    const select = label.createEl("select", { cls: "html-v-task-panel-filter-select" });
+    select.addEventListener("change", () => onChange(select.value));
+    return select;
+  }
+
   private renderStatusButtons(statusGroup: HTMLElement): void {
     Array.from(statusGroup.querySelectorAll<HTMLButtonElement>(".html-v-task-panel-status-button"))
       .forEach((button) => {
@@ -158,21 +202,25 @@ export class HtmlVTaskView extends ItemView {
   }
 
   private renderTasks(): void {
-    if (!this.listEl || !this.summaryEl) {
+    if (!this.listEl || !this.summaryEl || !this.paginationEl) {
       return;
     }
 
-    const allTasks = this.taskIndex.getSnapshot().tasks;
     const snapshot = this.taskIndex.getSnapshot(this.filter);
-    const openCount = allTasks.filter((task) => !task.checked).length;
-    const doneCount = allTasks.length - openCount;
+    this.renderFilterOptions(snapshot);
+
+    const totalPages = Math.max(1, Math.ceil(snapshot.tasks.length / TASK_PAGE_SIZE));
+    this.page = Math.min(this.page, totalPages);
+    const pageStart = (this.page - 1) * TASK_PAGE_SIZE;
+    const visibleTasks = snapshot.tasks.slice(pageStart, pageStart + TASK_PAGE_SIZE);
 
     this.summaryEl.setText(snapshot.isIndexing
       ? "Indexing tasks..."
-      : `${snapshot.tasks.length} shown · ${openCount} open · ${doneCount} done`);
+      : `${snapshot.tasks.length} shown · ${snapshot.openTasks} open · ${snapshot.doneTasks} done`);
 
-    // 当前仍是简单全量渲染；G-P2 需要在这里引入分页、虚拟列表或增量渲染。
+    // G-P2 使用分页限制单次 DOM 数量，先解决大列表卡顿，再为后续虚拟列表预留空间。
     this.listEl.empty();
+    this.paginationEl.empty();
     if (!snapshot.isReady && snapshot.tasks.length === 0) {
       this.listEl.createDiv({ cls: "html-v-task-panel-empty", text: "Building task index..." });
       return;
@@ -183,9 +231,59 @@ export class HtmlVTaskView extends ItemView {
       return;
     }
 
-    for (const task of snapshot.tasks) {
+    for (const task of visibleTasks) {
       this.renderTask(task);
     }
+    this.renderPagination(snapshot.tasks.length, totalPages);
+  }
+
+  private renderFilterOptions(snapshot: ReturnType<TaskIndex["getSnapshot"]>): void {
+    updateSelectOptions(this.sourceTypeSelect, [
+      { value: "all", text: "All sources" },
+      ...snapshot.availableSourceTypes.map((sourceType) => ({
+        value: sourceType,
+        text: getSourceTypeLabel(sourceType)
+      }))
+    ], this.filter.sourceType);
+    updateSelectOptions(this.tagSelect, [
+      { value: "", text: "All tags" },
+      ...snapshot.availableTags.map((tag) => ({ value: tag, text: tag }))
+    ], this.filter.tag);
+    updateSelectOptions(this.projectSelect, [
+      { value: "", text: "All projects" },
+      ...snapshot.availableProjects.map((project) => ({ value: project, text: project }))
+    ], this.filter.project);
+  }
+
+  private renderPagination(totalTasks: number, totalPages: number): void {
+    if (!this.paginationEl || totalTasks <= TASK_PAGE_SIZE) {
+      return;
+    }
+
+    const previousButton = this.paginationEl.createEl("button", {
+      cls: "html-v-task-panel-page-button",
+      text: "Prev"
+    });
+    previousButton.disabled = this.page <= 1;
+    previousButton.addEventListener("click", () => {
+      this.page = Math.max(1, this.page - 1);
+      this.renderTasks();
+    });
+
+    this.paginationEl.createSpan({
+      cls: "html-v-task-panel-page-label",
+      text: `${this.page} / ${totalPages}`
+    });
+
+    const nextButton = this.paginationEl.createEl("button", {
+      cls: "html-v-task-panel-page-button",
+      text: "Next"
+    });
+    nextButton.disabled = this.page >= totalPages;
+    nextButton.addEventListener("click", () => {
+      this.page = Math.min(totalPages, this.page + 1);
+      this.renderTasks();
+    });
   }
 
   private renderTask(task: HtmlVTask): void {
@@ -295,6 +393,10 @@ export class HtmlVTaskView extends ItemView {
       : [];
   }
 
+  private resetPage(): void {
+    this.page = 1;
+  }
+
   private getTaskPathsForCurrentFile(file: TFile): string[] {
     const paths = new Set<string>([file.path]);
     if (file.extension.toLowerCase() !== "md") {
@@ -321,4 +423,39 @@ export class HtmlVTaskView extends ItemView {
 
 function displayStatus(status: TaskFilter["status"]): string {
   return status === "all" ? "All" : status === "open" ? "Open" : "Done";
+}
+
+function updateSelectOptions(select: HTMLSelectElement | null, options: Array<{ value: string; text: string }>, selectedValue: string): void {
+  if (!select) {
+    return;
+  }
+
+  const nextSignature = options.map((option) => `${option.value}:${option.text}`).join("\n");
+  if (select.dataset.optionsSignature !== nextSignature) {
+    select.empty();
+    for (const option of options) {
+      select.createEl("option", {
+        value: option.value,
+        text: option.text
+      });
+    }
+    select.dataset.optionsSignature = nextSignature;
+  }
+
+  select.value = options.some((option) => option.value === selectedValue) ? selectedValue : options[0]?.value ?? "";
+}
+
+function isTaskSourceTypeFilter(value: string): value is TaskFilter["sourceType"] {
+  return value === "all" || value === "html-file" || value === "html-v-block" || value === "markdown-task";
+}
+
+function getSourceTypeLabel(sourceType: HtmlVTask["sourceType"]): string {
+  switch (sourceType) {
+    case "html-file":
+      return "HTML file";
+    case "html-v-block":
+      return "html-v block";
+    case "markdown-task":
+      return "Markdown task";
+  }
 }
