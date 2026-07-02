@@ -30,11 +30,11 @@ export default class HtmlVEditorPlugin extends Plugin {
       HTML_V_EDITOR_VIEW_TYPE,
       (leaf) => new HtmlVEditorView(leaf, assetsBaseUrl, () => this.settings, getPreviewSettings)
     );
-    this.taskIndex = new TaskIndex(this.app);
+    this.taskIndex = new TaskIndex(this.app, () => this.settings);
     this.taskIndex.start();
     this.registerView(
       HTML_V_TASK_PANEL_VIEW_TYPE,
-      (leaf) => new HtmlVTaskView(leaf, this.taskIndex ?? new TaskIndex(this.app))
+      (leaf) => new HtmlVTaskView(leaf, this.taskIndex ?? new TaskIndex(this.app, () => this.settings), () => this.settings)
     );
     this.registerHtmlExtensions();
     this.addSettingTab(new HtmlVEditorSettingTab(this.app, this));
@@ -125,11 +125,16 @@ export default class HtmlVEditorPlugin extends Plugin {
     };
     this.settings.characterMapGroups = normalizeCharacterMapGroups(this.settings.characterMapGroups);
     this.settings.customCharacterMap = normalizeCustomCharacters(this.settings.customCharacterMap);
+    this.settings.taskPanelPageSize = normalizeTaskPanelPageSize(this.settings.taskPanelPageSize);
+    if (!["all", "open", "done"].includes(this.settings.taskPanelDefaultStatus)) {
+      this.settings.taskPanelDefaultStatus = DEFAULT_SETTINGS.taskPanelDefaultStatus;
+    }
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
     this.refreshOpenPreviews();
+    void this.taskIndex?.rebuildAll();
   }
 
   async resetSettings(): Promise<void> {
@@ -221,4 +226,8 @@ export default class HtmlVEditorPlugin extends Plugin {
       }
     }
   }
+}
+
+function normalizeTaskPanelPageSize(value: number): number {
+  return Number.isFinite(value) ? Math.min(500, Math.max(20, Math.floor(value))) : DEFAULT_SETTINGS.taskPanelPageSize;
 }

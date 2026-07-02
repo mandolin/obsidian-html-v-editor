@@ -91,6 +91,19 @@ HTML V Tasks 是插件内置的任务面板，用于聚合 HTML checklist、Mark
 
 数据模型和回写边界见 [docs/task-panel-data-model.md](docs/task-panel-data-model.md)。
 
+## 设置页
+
+设置页已经按当前功能整理为中文分组，覆盖：
+
+- 编辑器与 Source 后端。
+- HugeRTE checklist 按钮。
+- 特殊字符按钮、默认字符组和自定义字符。
+- 任务面板索引范围、默认状态、分页大小。
+- Live Preview 行为。
+- Safe / Sandbox / Trusted 安全选项和 trust 规则。
+
+详细说明见 [docs/settings-guide.md](docs/settings-guide.md)。
+
 ## Stage 0 Scope
 
 Completed baseline:

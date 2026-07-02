@@ -444,6 +444,7 @@ class HtmlLivePreviewEmbedController {
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path),
       characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
+      enableChecklist: this.options.getSettings().enableChecklist,
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -469,6 +470,7 @@ class HtmlLivePreviewEmbedController {
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.options.file.path),
       characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
+      enableChecklist: this.options.getSettings().enableChecklist,
       sourceEditorMode: this.sourceEditorMode,
       onSave: async (nextHtml) => {
         this.html = nextHtml;

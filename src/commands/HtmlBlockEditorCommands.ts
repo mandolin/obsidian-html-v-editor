@@ -29,6 +29,7 @@ export function editSelectedHtml(editor: Editor, options: HtmlBlockEditorCommand
     assetsBaseUrl: options.assetsBaseUrl,
     documentBaseUrl: getEditorDocumentBaseUrl(options.app, options.app.workspace.getActiveFile()?.path),
     characterMap: buildHugeRteCharacterMap(options.getSettings()),
+    enableChecklist: options.getSettings().enableChecklist,
     sourceEditorMode: options.sourceEditorMode,
     onSave: async (nextHtml) => {
       editor.replaceSelection(normalizeHtml(nextHtml), "html-v-editor");
@@ -52,6 +53,7 @@ export function editHtmlBlockAtCursor(editor: Editor, options: HtmlBlockEditorCo
     assetsBaseUrl: options.assetsBaseUrl,
     documentBaseUrl: getEditorDocumentBaseUrl(options.app, options.app.workspace.getActiveFile()?.path),
     characterMap: buildHugeRteCharacterMap(options.getSettings()),
+    enableChecklist: options.getSettings().enableChecklist,
     sourceEditorMode: options.sourceEditorMode,
     onSave: async (nextHtml) => {
       const replacement = normalizeHtml(nextHtml);

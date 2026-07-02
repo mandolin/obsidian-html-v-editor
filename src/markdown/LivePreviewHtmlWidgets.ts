@@ -373,6 +373,7 @@ class HtmlPreviewWidget extends WidgetType {
         assetsBaseUrl: this.options.assetsBaseUrl,
         documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getPreviewSourcePath()),
         characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
+        enableChecklist: this.options.getSettings().enableChecklist,
         sourceEditorMode: this.options.getSettings().defaultSourceEditorMode,
         onSave: async (nextHtml) => {
           if (this.options.range.type === "embed") {
@@ -732,6 +733,7 @@ class InlineHtmlEditor {
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getEditorSourcePath()),
       characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
+      enableChecklist: this.options.getSettings().enableChecklist,
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -784,6 +786,7 @@ class InlineHtmlEditor {
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.options.app, this.getEditorSourcePath()),
       characterMap: buildHugeRteCharacterMap(this.options.getSettings()),
+      enableChecklist: this.options.getSettings().enableChecklist,
       sourceEditorMode: this.sourceEditorMode,
       onSave: async (nextHtml) => {
         this.html = nextHtml;

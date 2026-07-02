@@ -258,6 +258,7 @@ export class HtmlVEditorView extends TextFileView {
       assetsBaseUrl: this.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.app, this.file?.path),
       characterMap: buildHugeRteCharacterMap(this.getSettings()),
+      enableChecklist: this.getSettings().enableChecklist,
       sourceEditorMode: this.selectedSourceEditorMode,
       onChange: (html) => {
         this.html = html;
@@ -286,6 +287,7 @@ export class HtmlVEditorView extends TextFileView {
       assetsBaseUrl: this.assetsBaseUrl,
       documentBaseUrl: getEditorDocumentBaseUrl(this.app, this.file?.path),
       characterMap: buildHugeRteCharacterMap(this.getSettings()),
+      enableChecklist: this.getSettings().enableChecklist,
       sourceEditorMode: this.selectedSourceEditorMode,
       onChange: (html) => {
         this.html = html;

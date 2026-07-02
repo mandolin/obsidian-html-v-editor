@@ -4,12 +4,13 @@ import { HTML_V_EDITOR_VIEW_TYPE, HTML_V_TASK_PANEL_VIEW_TYPE } from "../constan
 import { HTML_FILE_EXTENSIONS } from "../constants";
 import { parseHtmlEmbedText } from "../markdown/HtmlEmbedParser";
 import { refreshLivePreviewHtmlEmbeds } from "../markdown/LivePreviewHtmlWidgets";
+import type { HtmlVEditorSettings } from "../settings/settings";
 import { HtmlVEditorView } from "../views/HtmlVEditorView";
 import { TaskIndex } from "./TaskIndex";
 import { TaskWriter } from "./TaskWriter";
 import type { HtmlVTask, TaskFilter } from "./TaskTypes";
 
-const TASK_PAGE_SIZE = 100;
+const DEFAULT_TASK_PAGE_SIZE = 100;
 
 export class HtmlVTaskView extends ItemView {
   private readonly writer: TaskWriter;
@@ -36,10 +37,12 @@ export class HtmlVTaskView extends ItemView {
 
   constructor(
     leaf: WorkspaceLeaf,
-    private readonly taskIndex: TaskIndex
+    private readonly taskIndex: TaskIndex,
+    private readonly getSettings: () => HtmlVEditorSettings
   ) {
     super(leaf);
     this.writer = new TaskWriter(this.app);
+    this.filter.status = getSettings().taskPanelDefaultStatus;
   }
 
   getViewType(): string {
@@ -209,10 +212,11 @@ export class HtmlVTaskView extends ItemView {
     const snapshot = this.taskIndex.getSnapshot(this.filter);
     this.renderFilterOptions(snapshot);
 
-    const totalPages = Math.max(1, Math.ceil(snapshot.tasks.length / TASK_PAGE_SIZE));
+    const pageSize = getTaskPanelPageSize(this.getSettings().taskPanelPageSize);
+    const totalPages = Math.max(1, Math.ceil(snapshot.tasks.length / pageSize));
     this.page = Math.min(this.page, totalPages);
-    const pageStart = (this.page - 1) * TASK_PAGE_SIZE;
-    const visibleTasks = snapshot.tasks.slice(pageStart, pageStart + TASK_PAGE_SIZE);
+    const pageStart = (this.page - 1) * pageSize;
+    const visibleTasks = snapshot.tasks.slice(pageStart, pageStart + pageSize);
 
     this.summaryEl.setText(snapshot.isIndexing
       ? "Indexing tasks..."
@@ -234,7 +238,7 @@ export class HtmlVTaskView extends ItemView {
     for (const task of visibleTasks) {
       this.renderTask(task);
     }
-    this.renderPagination(snapshot.tasks.length, totalPages);
+    this.renderPagination(snapshot.tasks.length, totalPages, pageSize);
   }
 
   private renderFilterOptions(snapshot: ReturnType<TaskIndex["getSnapshot"]>): void {
@@ -255,8 +259,8 @@ export class HtmlVTaskView extends ItemView {
     ], this.filter.project);
   }
 
-  private renderPagination(totalTasks: number, totalPages: number): void {
-    if (!this.paginationEl || totalTasks <= TASK_PAGE_SIZE) {
+  private renderPagination(totalTasks: number, totalPages: number, pageSize: number): void {
+    if (!this.paginationEl || totalTasks <= pageSize) {
       return;
     }
 
@@ -458,4 +462,10 @@ function getSourceTypeLabel(sourceType: HtmlVTask["sourceType"]): string {
     case "markdown-task":
       return "Markdown task";
   }
+}
+
+function getTaskPanelPageSize(value: number | undefined): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(500, Math.max(20, Math.floor(value)))
+    : DEFAULT_TASK_PAGE_SIZE;
 }

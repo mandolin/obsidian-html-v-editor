@@ -1,6 +1,7 @@
 import { Events, TFile, type App, type EventRef } from "obsidian";
 
 import { HTML_FILE_EXTENSIONS } from "../constants";
+import type { HtmlVEditorSettings } from "../settings/settings";
 import { parseHtmlTasks, parseHtmlVCodeBlockTasks, parseMarkdownTasks } from "./TaskParser";
 import type { HtmlVTask, TaskFilter, TaskIndexSnapshot } from "./TaskTypes";
 
@@ -13,7 +14,7 @@ export class TaskIndex extends Events {
   private isReady = false;
   private isIndexing = false;
 
-  constructor(private readonly app: App) {
+  constructor(private readonly app: App, private readonly getSettings: () => HtmlVEditorSettings) {
     super();
   }
 
@@ -128,7 +129,7 @@ export class TaskIndex extends Events {
 
     if (extension === "md") {
       return [
-        ...parseMarkdownTasks(text, file.path),
+        ...(this.getSettings().taskPanelIncludeMarkdownTasks ? parseMarkdownTasks(text, file.path) : []),
         ...parseHtmlVCodeBlockTasks(text, file.path)
       ];
     }

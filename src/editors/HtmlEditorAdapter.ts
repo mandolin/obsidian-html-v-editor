@@ -4,6 +4,7 @@ export interface EditorOptions {
   assetsBaseUrl: string;
   documentBaseUrl?: string;
   characterMap?: [number, string][];
+  enableChecklist?: boolean;
   isolateUiInFrame?: boolean;
   sourceEditorMode?: SourceEditorMode;
   onChange?: (html: string) => void;

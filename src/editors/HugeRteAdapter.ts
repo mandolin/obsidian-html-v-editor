@@ -103,7 +103,10 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
     this.target.className = "html-v-editor-hugerte-target";
     targetHost.appendChild(this.target);
     this.target.value = html;
-    registerHugeRteChecklistPlugin();
+    const enableChecklist = options.enableChecklist ?? true;
+    if (enableChecklist) {
+      registerHugeRteChecklistPlugin();
+    }
 
     const editors = await hugerte.init({
       target: this.target,
@@ -134,11 +137,16 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       font_family_formats: HUGERTE_FONT_FAMILY_FORMATS,
       charmap: options.characterMap,
       plugins: [
-        "advlist autolink lists link image media table code fullscreen checklist",
+        "advlist autolink lists link image media table code fullscreen",
+        enableChecklist ? "checklist" : "",
         options.characterMap ? "charmap" : ""
       ].filter(Boolean).join(" "),
       toolbar: [
-        "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist checklist outdent indent | link image media table",
+        [
+          "undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist",
+          enableChecklist ? "checklist" : "",
+          "outdent indent | link image media table"
+        ].filter(Boolean).join(" "),
         options.characterMap ? "charmap" : "",
         "| removeformat code fullscreen"
       ].filter(Boolean).join(" "),

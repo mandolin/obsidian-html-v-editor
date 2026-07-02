@@ -4,6 +4,7 @@ import type { CharacterMapGroupId, CustomCharacterMapEntry } from "../editors/Hu
 export type HtmlPreviewSecurityLevel = "safe" | "sandbox" | "trusted";
 export type SourceEditorMode = "textarea" | "codemirror";
 export type LivePreviewEditTrigger = "button" | "click";
+export type TaskPanelDefaultStatus = "all" | "open" | "done";
 
 export interface HtmlVEditorSettings {
   defaultEditor: HtmlEditorId;
@@ -20,9 +21,13 @@ export interface HtmlVEditorSettings {
   allowPopupsInSandbox: boolean;
   safeAllowRemoteImages: boolean;
   trustedAllowScripts: boolean;
+  enableChecklist: boolean;
   enableCharacterMap: boolean;
   characterMapGroups: CharacterMapGroupId[];
   customCharacterMap: CustomCharacterMapEntry[];
+  taskPanelIncludeMarkdownTasks: boolean;
+  taskPanelDefaultStatus: TaskPanelDefaultStatus;
+  taskPanelPageSize: number;
 }
 
 export type HtmlTrustScope = "file" | "folder" | "source";
@@ -48,7 +53,11 @@ export const DEFAULT_SETTINGS: HtmlVEditorSettings = {
   allowPopupsInSandbox: true,
   safeAllowRemoteImages: false,
   trustedAllowScripts: false,
+  enableChecklist: true,
   enableCharacterMap: true,
   characterMapGroups: ["common", "arrows", "boxDrawing", "shapes", "math"],
-  customCharacterMap: []
+  customCharacterMap: [],
+  taskPanelIncludeMarkdownTasks: true,
+  taskPanelDefaultStatus: "open",
+  taskPanelPageSize: 100
 };

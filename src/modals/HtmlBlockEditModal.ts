@@ -18,6 +18,7 @@ export interface HtmlBlockEditModalOptions {
   assetsBaseUrl: string;
   documentBaseUrl?: string;
   characterMap?: [number, string][];
+  enableChecklist?: boolean;
   sourceEditorMode?: SourceEditorMode;
   onSave: (html: string) => Promise<void>;
 }
@@ -194,6 +195,7 @@ export class HtmlBlockEditModal {
       assetsBaseUrl: this.options.assetsBaseUrl,
       documentBaseUrl: this.options.documentBaseUrl,
       characterMap: this.options.characterMap,
+      enableChecklist: this.options.enableChecklist,
       isolateUiInFrame: false,
       sourceEditorMode: this.sourceEditorMode,
       onChange: (html) => {

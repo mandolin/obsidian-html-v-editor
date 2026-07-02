@@ -43,6 +43,19 @@ large-task-benchmark.md
 - 大量任务时，每页最多显示 100 条，并出现 Prev / Next 分页控件。
 - 翻页、搜索、状态过滤、来源过滤后，任务列表仍可正常勾选和复制。
 
+## G-P3 设置页测试
+
+进入 Obsidian 设置中的 HTML V Editor 页面，验证：
+
+- 设置页分组和主要说明为中文。
+- 关闭 Checklist 按钮后，HugeRTE 工具栏不显示 checklist 按钮；已有 checklist 仍可预览。
+- 关闭特殊字符按钮后，HugeRTE 工具栏不显示特殊字符按钮。
+- 关闭“索引普通 Markdown task”后，任务面板不再显示普通 Markdown task，但仍显示 HTML checklist 和 `html-v` checklist。
+- 修改“任务面板默认状态”为 All / Open / Done 后，重新打开任务面板时默认状态符合设置。
+- 修改“任务面板每页数量”后，大量任务列表分页数量随设置变化。
+- 修改 Live Preview 相关开关后，已打开预览能刷新。
+- 安全相关设置仍保持保守默认值，Reset 可以恢复默认配置。
+
 ## 构建
 
 ```powershell
