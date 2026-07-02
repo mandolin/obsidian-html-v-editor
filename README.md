@@ -38,7 +38,6 @@ Manual installation:
 main.js
 manifest.json
 styles.css
-hugerte/
 ```
 
 3. Restart Obsidian or reload community plugins.
@@ -114,13 +113,14 @@ English: Safe mode sanitizes HTML with DOMPurify and renders it in a restricted 
 
 ## 发布状态 / Release Status
 
-当前插件版本：`0.1.0`
+当前插件版本：`1.0.0`
 
 当前状态：
 
 - 本地安装和手动测试可用。
 - G-P1 到 G-P4 稳定性、任务面板、设置整理和 release 包流程已完成。
 - G-P5 正在整理 Obsidian 社区插件市场发布材料。
+- HugeRTE 运行资源已经打入标准发布资产，正式安装不再依赖额外的 `hugerte/` 目录。
 
 社区插件市场发布前需要：
 

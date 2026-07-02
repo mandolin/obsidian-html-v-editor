@@ -1,20 +1,12 @@
-import { cp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
 const sourceRoot = path.join(root, "node_modules", "hugerte");
 const targetRoot = path.join(root, "hugerte");
-const assetDirs = ["icons", "models", "plugins", "skins", "themes"];
+const generatedModulePath = path.join(root, "src", "editors", "generatedHugeRteAssets.ts");
 
 await rm(targetRoot, { recursive: true, force: true });
-
-for (const dir of assetDirs) {
-  await cp(path.join(sourceRoot, dir), path.join(targetRoot, dir), {
-    recursive: true
-  });
-}
-
-console.log(`Copied HugeRTE assets -> ${targetRoot}`);
 
 const stylesPath = path.join(root, "styles.css");
 const generatedStart = "/* HTML V Editor generated HugeRTE CSS start */";
@@ -35,6 +27,20 @@ await writeFile(
   "utf8"
 );
 console.log("Merged HugeRTE skin CSS -> styles.css");
+
+const skinCss = generatedCss.join("\n");
+await mkdir(path.dirname(generatedModulePath), { recursive: true });
+await writeFile(
+  generatedModulePath,
+  [
+    "// 本文件由 tools/copy-hugerte-assets.mjs 生成，用于让正式发布包不依赖额外的 hugerte/ 目录。",
+    "export const HUGERTE_INLINE_SKIN_CSS =",
+    `${JSON.stringify(skinCss)};`,
+    ""
+  ].join("\n"),
+  "utf8"
+);
+console.log(`Generated HugeRTE inline assets -> ${generatedModulePath}`);
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

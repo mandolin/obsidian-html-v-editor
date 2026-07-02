@@ -69,9 +69,9 @@ npm run release
 - `main.js` 存在。
 - `manifest.json` 存在。
 - `styles.css` 存在。
-- `hugerte/` 存在。
+- HugeRTE 内嵌资源模块已生成。
 - `release/html-v-editor/` 存在。
-- `release/html-v-editor-0.1.0.zip` 存在。
+- `release/html-v-editor-1.0.0.zip` 存在。
 
 ## 本地安装
 

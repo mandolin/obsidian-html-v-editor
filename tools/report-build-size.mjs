@@ -2,7 +2,7 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const targets = ["main.js", "manifest.json", "styles.css", "hugerte"];
+const targets = ["main.js", "manifest.json", "styles.css"];
 
 let total = 0;
 

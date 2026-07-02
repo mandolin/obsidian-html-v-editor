@@ -10,6 +10,7 @@
 - 新增 G-P1/G-P2/G-P3/G-P4 阶段完成记录。
 - 新增 G-P5 市场发布准备记录和 Obsidian 插件市场提交说明。
 - 新增根目录 `versions.json`，声明当前版本的最低 Obsidian 版本。
+- 新增 HugeRTE 内嵌资源生成，正式发布资产不再依赖额外 `hugerte/` 目录。
 - 新增任务面板 source、tag、project 过滤。
 - 新增任务面板分页渲染，降低大量任务条目时的 DOM 压力。
 - 新增任务面板设置：普通 Markdown task 索引、默认状态、每页数量。
@@ -22,6 +23,7 @@
 - 测试清单改为中文，并补充 G-P1/G-P2/G-P3/G-P4 验证入口。
 - 本地安装文档和 release 包中的 `INSTALL.txt` 改为中文。
 - HTML checklist 回写时逐步补齐 `htmlv-*` 类名和 `data-htmlv-task-id`。
+- 正式版本号提升到 `1.0.0`。
 
 ### Fixed
 
@@ -32,9 +34,8 @@
 
 ### Notes
 
-- 当前版本号仍保持 `0.1.0`，正式发布前仍建议由用户确认是否提升版本。
 - Obsidian 插件市场发布材料已在 G-P5 准备，但尚未创建 GitHub Release 或提交社区插件 PR。
-- 正式提交前需要确认 `hugerte/` runtime 目录在社区插件安装流程中的分发方式。
+- HugeRTE runtime 已改为标准资产内嵌方案，正式发布时只需上传 `main.js`、`manifest.json`、`styles.css`。
 
 ## 0.1.0 - 2026-06-24
 

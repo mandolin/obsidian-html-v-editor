@@ -16,6 +16,7 @@ import "hugerte/themes/silver";
 import type { EditorOptions, HtmlEditorAdapter } from "./HtmlEditorAdapter";
 import { HUGERTE_CHECKLIST_CONTENT_STYLE, registerHugeRteChecklistPlugin } from "./HugeRteChecklistPlugin";
 import { stopObsidianContextMenuBubble } from "./editorDom";
+import { HUGERTE_INLINE_SKIN_CSS } from "./generatedHugeRteAssets";
 
 const HUGERTE_CONTENT_STYLE = [
   "body{font-family:var(--font-text,Arial,sans-serif);font-size:16px;line-height:1.5;margin:12px;}",
@@ -110,7 +111,6 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
 
     const editors = await hugerte.init({
       target: this.target,
-      base_url: options.assetsBaseUrl,
       suffix: ".min",
       promotion: false,
       branding: false,
@@ -120,8 +120,10 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       height: "100%",
       convert_urls: false,
       document_base_url: options.documentBaseUrl,
-      skin: options.isolateUiInFrame ? "oxide" : false,
-      content_css: options.isolateUiInFrame ? "default" : false,
+      // HugeRTE 的核心、插件、图标和主题已经被 esbuild 打入 main.js。
+      // 这里禁用运行时外部 skin/content_css 查找，保证市场安装只依赖标准三件套。
+      skin: false,
+      content_css: false,
       object_resizing: "table",
       table_grid: true,
       table_resize_bars: true,
@@ -232,6 +234,7 @@ export class HugeRteAdapter implements HtmlEditorAdapter {
       "<head>",
       "<meta charset=\"utf-8\">",
       "<style>",
+      HUGERTE_INLINE_SKIN_CSS,
       "html,body,#html-v-hugerte-frame-host{height:100%;margin:0;overflow:hidden;background:#fff;}",
       "body{font-family:Arial,sans-serif;}",
       "#html-v-hugerte-frame-host{display:flex;flex-direction:column;}",

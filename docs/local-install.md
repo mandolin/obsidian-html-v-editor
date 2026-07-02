@@ -13,7 +13,7 @@ npm run release
 
 ```text
 release/html-v-editor/
-release/html-v-editor-0.1.0.zip
+release/html-v-editor-1.0.0.zip
 ```
 
 ## 从文件夹安装
@@ -37,7 +37,7 @@ release/html-v-editor/
 解压：
 
 ```text
-release/html-v-editor-0.1.0.zip
+release/html-v-editor-1.0.0.zip
 ```
 
 到：
@@ -58,5 +58,4 @@ release/html-v-editor-0.1.0.zip
 main.js
 manifest.json
 styles.css
-hugerte/
 ```

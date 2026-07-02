@@ -1,12 +1,12 @@
 {
   "name": "obsidian-html-v-editor",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Visual HTML/HTM editor plugin for Obsidian.",
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "dev": "node esbuild.config.mjs --watch",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && node tools/copy-hugerte-assets.mjs",
+    "dev": "node tools/copy-hugerte-assets.mjs && node esbuild.config.mjs --watch",
+    "build": "node tools/copy-hugerte-assets.mjs && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "copy:local": "node tools/copy-local-plugin.mjs",
     "release": "npm run build && node tools/create-release.mjs",
     "size": "node tools/report-build-size.mjs"

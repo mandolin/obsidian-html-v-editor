@@ -1,4 +1,4 @@
-import { copyFile, cp, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 
 const pluginDir = process.env.OBSIDIAN_PLUGIN_DIR;
@@ -21,7 +21,4 @@ for (const file of files) {
 }
 
 await rm(path.join(target, "hugerte"), { recursive: true, force: true });
-await cp(path.join(root, "hugerte"), path.join(target, "hugerte"), {
-  recursive: true
-});
-console.log(`Copied hugerte assets -> ${target}`);
+console.log(`Removed legacy hugerte assets from ${target}`);
