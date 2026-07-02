@@ -1,46 +1,38 @@
-# obsidian-html-v-editor
+# HTML V Editor
 
-HTML V Editor is an Obsidian plugin for editing and previewing HTML/HTM files inside a vault.
+HTML V Editor 是一个 Obsidian 桌面端插件，用来在 vault 内直接预览、编辑和保存 `.html` / `.htm` 文件，并为 Markdown 中的 `html-v` 代码块和 HTML 嵌入提供可视化编辑体验。
 
-Current status: local-testable MVP plus post-stage-7 feature work. The plugin can open `.html` and `.htm` files in a custom workspace tab with Preview, Edit, Source, and Save controls. Preview mode has configurable security levels and trust rules. Markdown `html-v` fenced code blocks and embedded HTML files can be previewed and edited from Markdown reading or Live Preview surfaces. Plain raw HTML blocks are left to Obsidian by default, with command-based editing still available when explicitly invoked. Editor adapters can be switched at runtime.
+English: HTML V Editor is a desktop-only Obsidian plugin for previewing, visually editing, and saving `.html` / `.htm` files inside your vault. It also supports editable Markdown `html-v` code blocks and embedded HTML files.
 
-## Development
+## 功能亮点 / Features
 
-Install dependencies:
+- 在 Obsidian 中打开 `.html` / `.htm` 文件，并在 Preview、Edit、Source 三种模式之间切换。
+- 使用本地打包的 HugeRTE 作为可视化 HTML 编辑器，不依赖 CDN。
+- 支持 Markdown `html-v` fenced code block 的阅读模式和 Live Preview 渲染。
+- 支持 Markdown 中嵌入 HTML 文件，并从嵌入预览进入编辑。
+- 提供 Safe / Sandbox / Trusted 三档预览安全模式。
+- 支持 HugeRTE checklist、特殊字符选择器、图片路径处理、表格内 checklist。
+- 内置 HTML V Tasks 任务面板，可聚合 HTML checklist、`html-v` block checklist 和普通 Markdown task。
+- 任务面板支持状态、来源、tag、project、当前文件和分页过滤。
 
-```bash
-npm install
-```
+English features:
 
-Build the plugin:
+- Open `.html` / `.htm` files in a custom Obsidian view.
+- Switch between Preview, visual Edit, Source, and Save.
+- Bundle HugeRTE locally with no CDN dependency.
+- Render and edit Markdown `html-v` fenced code blocks.
+- Render and edit embedded HTML files.
+- Use Safe, Sandbox, or Trusted preview modes.
+- Manage HTML checklist tasks through the built-in HTML V Tasks side panel.
 
-```bash
-npm run build
-```
+## 安装 / Installation
 
-Build a local release package:
+当前版本仍建议先手动安装；进入 Obsidian 插件市场后可从社区插件列表安装。
 
-```bash
-npm run release
-```
+Manual installation:
 
-Report build artifact sizes:
-
-```bash
-npm run size
-```
-
-Watch source files during development:
-
-```bash
-npm run dev
-```
-
-The build outputs `main.js` at the repository root and copies HugeRTE runtime assets into `hugerte/`. Obsidian also needs `manifest.json` and `styles.css`.
-
-## Local Install
-
-Copy these files into your test vault plugin folder:
+1. Download the release assets from GitHub.
+2. Copy these files into `<vault>/.obsidian/plugins/html-v-editor/`:
 
 ```text
 main.js
@@ -49,51 +41,59 @@ styles.css
 hugerte/
 ```
 
-Target folder:
+3. Restart Obsidian or reload community plugins.
+4. Enable `HTML V Editor` in Obsidian settings.
 
-```text
-<your-vault>/.obsidian/plugins/html-v-editor/
+本地安装细节见 [docs/local-install.md](docs/local-install.md)。
+
+## 使用 / Usage
+
+打开 vault 中的 `.html` 或 `.htm` 文件后，插件会显示 HTML V Editor 标签页。顶部按钮用于切换：
+
+- `Preview`：预览 HTML 内容。
+- `Edit`：使用 HugeRTE 可视化编辑。
+- `Source`：直接编辑 HTML 源码。
+- `Save`：写回当前文件。
+
+在 Markdown 文件中可以使用：
+
+````markdown
+```html-v
+<table>
+  <tr><td>Hello HTML V</td></tr>
+</table>
+```
+````
+
+也可以嵌入 vault 内 HTML 文件：
+
+```markdown
+![[example.html]]
 ```
 
-You can also set `OBSIDIAN_PLUGIN_DIR` and run the helper script.
-
-PowerShell example:
-
-```powershell
-$env:OBSIDIAN_PLUGIN_DIR = "C:\Path\To\Vault\.obsidian\plugins\html-v-editor"
-npm run copy:local
-```
-
-After copying, enable `HTML V Editor` in Obsidian's community plugins settings.
-
-Release packages are written to:
-
-```text
-release/html-v-editor/
-release/html-v-editor-0.1.0.zip
-```
-
-See [docs/local-install.md](docs/local-install.md) for the full local install flow and [docs/testing-checklist.md](docs/testing-checklist.md) for manual verification.
+English usage: open an HTML file in your vault, switch modes from the toolbar, edit with HugeRTE or source mode, then save back to the same vault file. Markdown `html-v` blocks and embedded HTML files can be edited from reading or Live Preview surfaces.
 
 ## HTML V Tasks
 
-HTML V Tasks 是插件内置的任务面板，用于聚合 HTML checklist、Markdown `html-v` code block checklist，以及普通 Markdown task。
+HTML V Tasks 是插件内置任务面板，用于集中查看和勾选：
 
-当前支持：
+- HTML 文件中的 HugeRTE checklist。
+- Markdown `html-v` code block 中的 checklist。
+- 普通 Markdown task。
 
-- 按 All / Open / Done 过滤。
-- 只查看 HugeRTE / HTML V checklist。
-- 只查看当前文件，以及当前 Markdown 文件嵌入的 HTML 文件。
-- 按任务来源过滤：HTML file、html-v block、Markdown task。
-- 按 `#tag` 和 `#project/name` 过滤。
-- 从面板勾选任务，并回写到对应 HTML 文件、`html-v` code block 或 Markdown task 行。
-- 大量任务时使用分页渲染，降低面板一次性创建 DOM 的压力。
+任务面板支持：
+
+- `All` / `Open` / `Done` 状态过滤。
+- 只看 HugeRTE / HTML V checklist。
+- 只看当前文件，以及当前 Markdown 文件嵌入的 HTML 文件。
+- 按来源、`#tag`、`#project/name` 过滤。
+- 分页渲染大量任务条目。
 
 数据模型和回写边界见 [docs/task-panel-data-model.md](docs/task-panel-data-model.md)。
 
-## 设置页
+## 设置 / Settings
 
-设置页已经按当前功能整理为中文分组，覆盖：
+插件设置页目前按中文分组整理，覆盖：
 
 - 编辑器与 Source 后端。
 - HugeRTE checklist 按钮。
@@ -104,222 +104,66 @@ HTML V Tasks 是插件内置的任务面板，用于聚合 HTML checklist、Mark
 
 详细说明见 [docs/settings-guide.md](docs/settings-guide.md)。
 
-## Stage 0 Scope
+## 安全说明 / Security
 
-Completed baseline:
+默认 `Safe` 模式会使用 DOMPurify 清理 HTML，移除脚本和高风险属性，并在不允许脚本执行的 iframe 中渲染。
 
-- Single-plugin TypeScript project.
-- Obsidian `manifest.json` with plugin id `html-v-editor`.
-- esbuild production and watch builds.
-- Minimal plugin entrypoint that loads, unloads, and exposes a status command.
-- Root-level Obsidian plugin artifacts: `main.js`, `manifest.json`, `styles.css`.
-- Local copy helper using `OBSIDIAN_PLUGIN_DIR`.
+`Sandbox` 和 `Trusted` 模式适用于你信任的内容。脚本、同源、表单和弹窗能力由设置项控制。请只对可信来源启用更高权限。
 
-Next stage:
+English: Safe mode sanitizes HTML with DOMPurify and renders it in a restricted iframe. Sandbox and Trusted modes expose more browser capabilities and should only be used with content you trust.
 
-- Prepare marketplace release assets and submission workflow.
+## 发布状态 / Release Status
 
-## Stage 1 Scope
+当前插件版本：`0.1.0`
 
-Completed MVP:
+当前状态：
 
-- Registered `HTML_V_EDITOR_VIEW_TYPE`.
-- Registered `.html` and `.htm` extensions for the custom view.
-- Added command `Open current HTML file with HTML V Editor`.
-- Added Preview mode using a sandboxed iframe.
-- Added Edit mode using HugeRTE.
-- Added Source mode using a textarea.
-- Added Save action that writes the current content back to the Obsidian `TFile`.
-- Bundled HugeRTE locally and copied its runtime assets during build.
+- 本地安装和手动测试可用。
+- G-P1 到 G-P4 稳定性、任务面板、设置整理和 release 包流程已完成。
+- G-P5 正在整理 Obsidian 社区插件市场发布材料。
 
-Known limitations:
+社区插件市场发布前需要：
 
-- HugeRTE is the only visual editor adapter.
-- Markdown embeds and Markdown HTML blocks are not implemented yet.
+- GitHub Release tag 与 `manifest.json` 中的版本号一致。
+- Release assets 包含 `main.js`、`manifest.json`、`styles.css`。
+- 仓库根目录包含 `versions.json`。
+- 向 `obsidianmd/obsidian-releases` 提交社区插件记录。
 
-## Preview Security
+## 开发 / Development
 
-Preview mode supports three security levels.
+Install dependencies:
 
-`Safe` is the default. It sanitizes HTML with DOMPurify, removes scripts and embedded frames, blocks event handler attributes, and renders the result in an iframe without script permissions.
-
-`Sandbox` renders the original HTML in a sandboxed iframe. Scripts, same-origin, forms, and popups are controlled by separate settings and are off unless explicitly enabled, except popups which default to on for normal link behavior.
-
-`Trusted` is for content the user explicitly trusts. It still uses an iframe, but allows same-origin, forms, and popups. Script execution remains off by default and must be enabled separately.
-
-The plugin does not use CDN-hosted editor code. HugeRTE and its runtime assets are bundled locally.
-
-## Stage 2 Scope
-
-Completed safety baseline:
-
-- Added plugin settings.
-- Added default preview security level.
-- Added Safe/Sandbox/Trusted preview modes.
-- Added DOMPurify-based Safe sanitizer.
-- Added sandbox token controls for scripts, same-origin, forms, and popups.
-- Kept script execution disabled by default.
-- Documented the security model.
-
-## Stage 3 Scope
-
-Completed Markdown code block support:
-
-- Registered the `html-v` fenced code block processor.
-- Renders `html-v` blocks as safe HTML previews in reading mode without plugin chrome.
-- Supports inline editing for `html-v` blocks in Live Preview.
-- Saves edited HTML back into the original fenced code block from Live Preview.
-
-Example:
-
-````markdown
-```html-v
-<section>
-  <h2>Hello HTML</h2>
-</section>
-```
-````
-
-Optional Live Preview dimensions can be added after the language name:
-
-````markdown
-```html-v 800x600
-<table><tr><td>Fixed preview area</td></tr></table>
-```
-````
-
-## Stage 4 Scope
-
-Completed HTML file embeds:
-
-- Detects Markdown internal embeds that point to `.html` or `.htm` files.
-- Replaces the embed with an HTML V preview panel in reading mode.
-- Renders embedded files with the configured preview security policy.
-- Adds `Refresh` and `Edit` buttons to the embed panel.
-- Refreshes the embedded preview when the target HTML file changes.
-- Edits the target file inline from the embed panel when `Edit` is clicked.
-
-Example:
-
-```markdown
-![[example.html]]
+```bash
+npm install
 ```
 
-Live Preview support:
+Build:
 
-- `![[example.html]]` and `![[example.htm]]` are replaced with rendered editable widgets when Live Preview is active.
-- Use `Source` on the widget to return the cursor to the original Markdown line.
-- Use `Edit` to edit the external file without opening a separate HTML V Editor tab.
-
-If preview security settings change while an embed is already visible, use `Refresh` or rerender the Markdown preview.
-
-## Stage 5 Scope
-
-Completed command-based raw HTML editing:
-
-- Added command `Edit selected HTML with HTML V Editor`.
-- Added command `Edit HTML block at cursor with HTML V Editor`.
-- The selected HTML command opens the current selection in a HugeRTE modal and replaces the selection on save.
-- The cursor command conservatively detects a complete block-level HTML element around the cursor and replaces that source range on save.
-- If no complete block can be found, the command shows a notice and does not edit the file.
-
-Supported cursor-detection tags include common block elements such as `div`, `section`, `article`, `table`, `ul`, `ol`, and related table tags.
-
-Live Preview support:
-
-- Automatic Live Preview widgets are intentionally scoped to `html-v` fenced blocks.
-- Plain raw HTML blocks are left to Obsidian's native renderer to avoid compatibility issues with normal Markdown documents.
-- Use `Edit selected HTML with HTML V Editor` or `Edit HTML block at cursor with HTML V Editor` when you explicitly want to edit a raw HTML block.
-
-Known limitations:
-
-- Cursor command detection intentionally handles only complete, closed block-level HTML elements.
-- It does not attempt to parse arbitrary malformed HTML.
-
-## Stage 6 Scope
-
-Completed editor adapter switching:
-
-- Solidified `HtmlEditorAdapter`.
-- Added editor registry.
-- HugeRTE remains the default editor.
-- Added TipTap and ProseMirror as third-party structured editor adapters.
-- Added built-in `Source` adapter as a plain HTML fallback.
-- Added setting for default editor.
-- File Edit mode can switch between HugeRTE and Source without losing current HTML.
-- Modal editors can switch between HugeRTE and Source without losing current HTML.
-- `html-v` block editing and raw HTML command editing use the configured default editor.
-
-Current editor adapters:
-
-```text
-HugeRTE
-TipTap
-ProseMirror
-Source
+```bash
+npm run build
 ```
 
-Future adapters can be added through the registry without changing view or modal orchestration.
+Create local release package:
 
-## Source Backend
-
-The `Source` editor can use either backend:
-
-- `CodeMirror`: default, richer source editing surface with line numbers and wrapping.
-- `Textarea`: minimal native fallback.
-
-This setting applies to the file view `Source` mode and to modal editors whenever the selected editor is `Source`.
-
-## Trust Rules
-
-The default security level is still global, but it can be overridden by trust rules.
-
-Global trust rules are configured in plugin settings as JSON:
-
-```json
-[
-  {
-    "scope": "folder",
-    "pattern": "trusted-html",
-    "securityLevel": "trusted"
-  },
-  {
-    "scope": "source",
-    "pattern": "https://example.com",
-    "securityLevel": "sandbox"
-  }
-]
+```bash
+npm run release
 ```
 
-Rules can also live in `.htmlv` files at the vault root or in parent folders:
+Report artifact sizes:
 
-```json
-{
-  "trust": [
-    {
-      "scope": "file",
-      "pattern": "trusted-html/report.html",
-      "securityLevel": "trusted"
-    }
-  ]
-}
+```bash
+npm run size
 ```
 
-Rule scopes:
+Copy to a local vault plugin folder:
 
-- `file`: exact vault path match.
-- `folder`: applies to the folder and descendants.
-- `source`: matches external `http` or `https` origins found in HTML `src` or `href` attributes. Regex patterns may be written as `/pattern/flags`.
+```powershell
+$env:OBSIDIAN_PLUGIN_DIR = "C:\Path\To\Vault\.obsidian\plugins\html-v-editor"
+npm run copy:local
+```
 
-Later matching rules override earlier matches. Folder `.htmlv` files are read from vault root to the nearest parent folder, so closer folders can override broader policy.
+发布前检查见 [docs/release-checklist.md](docs/release-checklist.md)。
 
-## Stage 7 Scope
+## License
 
-Completed stabilization and local distribution:
-
-- Added `CHANGELOG.md`.
-- Added local install documentation.
-- Added testing checklist.
-- Added `npm run size`.
-- Added `npm run release`.
-- Release output includes a folder package and zip package.
+MIT

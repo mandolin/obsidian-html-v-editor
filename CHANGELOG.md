@@ -1,6 +1,6 @@
 # Changelog
 
-## 未发布 - G-P1 到 G-P4
+## 未发布 - G-P1 到 G-P5
 
 ### Added
 
@@ -8,6 +8,8 @@
 - 新增 HTML V Tasks 任务面板数据模型说明。
 - 新增设置说明文档和发布前检查清单。
 - 新增 G-P1/G-P2/G-P3/G-P4 阶段完成记录。
+- 新增 G-P5 市场发布准备记录和 Obsidian 插件市场提交说明。
+- 新增根目录 `versions.json`，声明当前版本的最低 Obsidian 版本。
 - 新增任务面板 source、tag、project 过滤。
 - 新增任务面板分页渲染，降低大量任务条目时的 DOM 压力。
 - 新增任务面板设置：普通 Markdown task 索引、默认状态、每页数量。
@@ -16,6 +18,7 @@
 ### Changed
 
 - 设置页主要文案改为中文，并按编辑器、特殊字符、任务面板、预览与安全分组。
+- README 改为更适合 Obsidian 插件市场审核和用户阅读的中英双语首页。
 - 测试清单改为中文，并补充 G-P1/G-P2/G-P3/G-P4 验证入口。
 - 本地安装文档和 release 包中的 `INSTALL.txt` 改为中文。
 - HTML checklist 回写时逐步补齐 `htmlv-*` 类名和 `data-htmlv-task-id`。
@@ -29,8 +32,9 @@
 
 ### Notes
 
-- 当前版本号仍保持 `0.1.0`，正式版本提升留到 G-P4/G-P5 之后由用户确认。
-- Obsidian 插件市场发布仍保留到 G-P5。
+- 当前版本号仍保持 `0.1.0`，正式发布前仍建议由用户确认是否提升版本。
+- Obsidian 插件市场发布材料已在 G-P5 准备，但尚未创建 GitHub Release 或提交社区插件 PR。
+- 正式提交前需要确认 `hugerte/` runtime 目录在社区插件安装流程中的分发方式。
 
 ## 0.1.0 - 2026-06-24
 
