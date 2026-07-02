@@ -24,9 +24,6 @@ export class HtmlVEditorSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl)
-      .setName("General")
-      .setHeading();
     containerEl.createEl("p", {
       text: "当前设置以稳定默认值为主。修改后会刷新已打开的 HTML 预览和任务索引。"
     });
