@@ -171,6 +171,7 @@ export class HtmlVTaskView extends ItemView {
       ? "Indexing tasks..."
       : `${snapshot.tasks.length} shown · ${openCount} open · ${doneCount} done`);
 
+    // 当前仍是简单全量渲染；G-P2 需要在这里引入分页、虚拟列表或增量渲染。
     this.listEl.empty();
     if (!snapshot.isReady && snapshot.tasks.length === 0) {
       this.listEl.createDiv({ cls: "html-v-task-panel-empty", text: "Building task index..." });
@@ -202,6 +203,7 @@ export class HtmlVTaskView extends ItemView {
     checkbox.addEventListener("change", async () => {
       checkbox.disabled = true;
       await this.writer.setChecked(task, checkbox.checked);
+      // 回写后主动刷新已打开的 HTML tab、Live Preview widget 和阅读模式嵌入。
       await this.refreshOpenHtmlViews(task.path);
       refreshLivePreviewHtmlEmbeds(task.path);
       this.refreshOpenMarkdownEmbeds(task.path);
@@ -293,6 +295,7 @@ export class HtmlVTaskView extends ItemView {
     }
 
     const cache = this.app.metadataCache.getFileCache(file);
+    // “当前文件”过滤需要把当前 Markdown 中嵌入的 HTML 文件一并视为当前上下文。
     for (const embed of cache?.embeds ?? []) {
       const spec = parseHtmlEmbedText(embed.original);
       if (!spec) {

@@ -42,6 +42,7 @@ export class HtmlVCodeBlockProcessor {
     el: HTMLElement,
     ctx: MarkdownPostProcessorContext
   ): Promise<Pick<HtmlEmbedSpec, "width" | "height">> {
+    // 阅读模式下 Obsidian 有时只能从 sectionInfo 拿到渲染片段，所以先走最近上下文。
     const section = ctx.getSectionInfo(el);
     const sectionOpeningLine = section?.text.split(/\r?\n/, 1)[0];
     const sectionDimensions = parseHtmlVOpeningLineDimensions(sectionOpeningLine);
@@ -58,6 +59,7 @@ export class HtmlVCodeBlockProcessor {
     const lines = data.split(/\r?\n/);
     const lineStart = section?.lineStart;
     if (typeof lineStart === "number") {
+      // sectionInfo 的起始行可能略有偏移，附近搜索可以覆盖表格/标题等复杂布局后的定位误差。
       const byLine = findNearbyHtmlVOpeningLine(lines, lineStart, source);
       const lineDimensions = parseHtmlVOpeningLineDimensions(byLine);
       if (lineDimensions.width || lineDimensions.height) {
@@ -179,6 +181,7 @@ class HtmlVCodeBlockRenderChild extends MarkdownRenderChild {
     };
 
     apply();
+    // 阅读模式渲染会被 Obsidian 后续布局覆盖，延迟重放几次可保证宽高最终落到容器上。
     for (const delay of [0, 50, 250]) {
       this.dimensionTimers.push(window.setTimeout(apply, delay));
     }

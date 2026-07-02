@@ -30,6 +30,7 @@ export interface LivePreviewHtmlWidgetsOptions {
 const liveEmbedRefreshers = new Map<string, Set<() => void>>();
 
 export function refreshLivePreviewHtmlEmbeds(path: string): void {
+  // 任务面板回写磁盘后，通过注册表精准刷新引用同一 HTML 文件的 Live Preview widget。
   for (const refresh of Array.from(liveEmbedRefreshers.get(path) ?? [])) {
     refresh();
   }
@@ -120,6 +121,7 @@ function scanLivePreviewRanges(text: string, options: ScanOptions): LivePreviewR
     const trimmed = line.trim();
 
     if (!inFence && options.includeHtmlBlocks) {
+      // 先识别 html-v fence，避免后续普通 fence 状态切换把自定义 HTML 块漏掉。
       const fenceMatch = line.match(HTML_V_FENCE_START_PATTERN);
       if (fenceMatch) {
         const marker = fenceMatch[2];

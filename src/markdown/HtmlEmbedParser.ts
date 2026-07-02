@@ -11,6 +11,7 @@ export function parseHtmlEmbedText(value: string | null): HtmlEmbedSpec | null {
 
   const trimmed = value.trim();
   const wikiMatch = trimmed.match(/^!?\[\[(.+?)]]$/);
+  // 同时兼容 Obsidian wiki embed 和内部直接传入的 linktext/参数片段。
   const raw = wikiMatch?.[1] ?? trimmed;
   const [rawLinktext, ...rawParams] = raw.split("|");
   const linktext = rawLinktext?.split("#")[0]?.trim();
@@ -31,6 +32,7 @@ export function parseEmbedDimensions(value: string | undefined): Pick<HtmlEmbedS
   }
 
   const normalized = value.trim().toLowerCase();
+  // 支持 `600x400`、`600`、`|600x400` 等更接近 Obsidian embed 的写法。
   const sizeMatch = normalized.match(/(?:^|\s|[|,{])(\d{2,5})(?:\s*x\s*(\d{2,5}))?(?=\s|$|[},])/);
   if (sizeMatch) {
     return {
@@ -39,6 +41,7 @@ export function parseEmbedDimensions(value: string | undefined): Pick<HtmlEmbedS
     };
   }
 
+  // 也支持 `width=600 height=400`、`w:600 h:400` 等显式参数，便于后续扩展。
   const widthMatch = normalized.match(/(?:^|\s|[,{|])(width|w)\s*[:=]\s*(\d{2,5})(?=\s|$|[},|])/);
   const heightMatch = normalized.match(/(?:^|\s|[,{|])(height|h)\s*[:=]\s*(\d{2,5})(?=\s|$|[},|])/);
   if (!widthMatch && !heightMatch) {

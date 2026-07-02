@@ -5,8 +5,10 @@ import { parseHtmlTasks, parseHtmlVCodeBlockTasks, parseMarkdownTasks } from "./
 import type { HtmlVTask, TaskFilter, TaskIndexSnapshot } from "./TaskTypes";
 
 export class TaskIndex extends Events {
+  // 按文件保存索引结果，方便单文件变更后局部重建，避免每次都扫完整 vault。
   private tasksByPath = new Map<string, HtmlVTask[]>();
   private eventRefs: EventRef[] = [];
+  // Obsidian 保存文件时可能连续触发 modify，这里用防抖合并短时间内的重建请求。
   private reindexTimers = new Map<string, number>();
   private isReady = false;
   private isIndexing = false;
@@ -59,6 +61,7 @@ export class TaskIndex extends Events {
     this.isIndexing = true;
     this.trigger("changed");
 
+    // 全量重建只在启动、手动刷新等场景执行；G-P2 做大列表优化时也应从这里评估索引成本。
     const nextTasksByPath = new Map<string, HtmlVTask[]>();
     for (const file of this.app.vault.getFiles().filter(isTaskSourceFile)) {
       nextTasksByPath.set(file.path, await this.parseFile(file));
@@ -143,6 +146,7 @@ function filterTasks(tasks: HtmlVTask[], filter: Partial<TaskFilter>): HtmlVTask
     if (filter.checklistOnly && task.sourceType === "markdown-task") {
       return false;
     }
+    // “当前文件”包含当前 Markdown 自身，以及其中嵌入的 HTML 文件。
     if (filter.currentFileOnly && !getCurrentPathSet(filter).has(task.path)) {
       return false;
     }

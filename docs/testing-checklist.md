@@ -2,6 +2,29 @@
 
 Use a disposable vault for manual verification.
 
+## G-P1 稳定性测试样例
+
+G-P1 专用 smoke test 样例位于：
+
+```text
+I:\AI\Secret汇集区\temp\html-v-editor-gp1-smoke
+```
+
+入口文件：
+
+```text
+GP1-测试入口.md
+```
+
+重点验证：
+
+- `html-v` block 宽高在阅读模式、Live Preview、编辑模式中是否一致。
+- HTML 文件 embed 是否能在阅读模式和 Live Preview 中正常渲染。
+- HTML 文件和 `html-v` block 中的图片资源路径是否正常。
+- 表格内 checklist 是否能被任务面板索引和回写。
+- 任务面板勾选后，已打开的 HTML tab、Markdown 阅读模式、Live Preview widget 是否刷新。
+- `large-task-benchmark.md` 仅作为 G-P2 性能基准，不要求 G-P1 完成性能优化。
+
 ## Build
 
 ```powershell
